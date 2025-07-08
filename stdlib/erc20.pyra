@@ -1,0 +1,70 @@
+# ERC20 token standard implementation
+
+struct ERC20 {
+    name: string,
+    symbol: string,
+    decimals: uint8,
+    total_supply: uint256,
+    balances: Map<address, uint256>,
+    allowances: Map<address, Map<address, uint256>>
+}
+
+def init(name: string, symbol: string, decimals: uint8, total_supply: uint256) -> ERC20:
+    """Initialize a new ERC20 token"""
+    let mut token = ERC20 {
+        name: name,
+        symbol: symbol,
+        decimals: decimals,
+        total_supply: total_supply,
+        balances: Map::new(),
+        allowances: Map::new()
+    }
+    
+    # Mint initial supply to deployer
+    token.balances[msg.sender] = total_supply
+    
+    return token
+
+def transfer(to: address, amount: uint256) -> bool:
+    """Transfer tokens from sender to recipient"""
+    require to != address(0)
+    require amount > 0
+    require balances[msg.sender] >= amount
+    
+    balances[msg.sender] -= amount
+    balances[to] += amount
+    
+    # emit Transfer(msg.sender, to, amount)
+    return true
+
+def approve(spender: address, amount: uint256) -> bool:
+    """Approve spender to spend tokens on behalf of sender"""
+    require spender != address(0)
+    
+    allowances[msg.sender][spender] = amount
+    
+    # emit Approval(msg.sender, spender, amount)
+    return true
+
+def transfer_from(from: address, to: address, amount: uint256) -> bool:
+    """Transfer tokens from one address to another using allowance"""
+    require from != address(0)
+    require to != address(0)
+    require amount > 0
+    require balances[from] >= amount
+    require allowances[from][msg.sender] >= amount
+    
+    balances[from] -= amount
+    balances[to] += amount
+    allowances[from][msg.sender] -= amount
+    
+    # emit Transfer(from, to, amount)
+    return true
+
+def balance_of(owner: address) -> uint256:
+    """Get the token balance of an address"""
+    return balances[owner]
+
+def allowance(owner: address, spender: address) -> uint256:
+    """Get the allowance of spender for owner's tokens"""
+    return allowances[owner][spender]

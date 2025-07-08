@@ -1,0 +1,32 @@
+# ERC20 Token Example
+# This is a basic ERC20 token implementation in Pyra
+
+let total_supply: uint256 = 1000000
+
+struct Token {
+    name: string,
+    symbol: string,
+    decimals: uint8,
+    total_supply: uint256
+}
+
+def init() -> Token:
+    return Token {
+        name: "PyraToken",
+        symbol: "PYRA",
+        decimals: 18,
+        total_supply: total_supply
+    }
+
+def transfer(to: address, amount: uint256) -> bool:
+    require amount > 0
+    require balances[msg.sender] >= amount
+    
+    balances[msg.sender] -= amount
+    balances[to] += amount
+    
+    # emit Transfer(msg.sender, to, amount)
+    return true
+
+def balance_of(owner: address) -> uint256:
+    return balances[owner]

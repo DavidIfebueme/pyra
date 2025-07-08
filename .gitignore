@@ -1,3 +1,31 @@
+# Rust
+/target/
+/Cargo.lock
+
+# If you're publishing a library, include Cargo.lock; otherwise, ignore it for apps.
+/**/target/
+**/*.rs.bk
+
+# Rustup
+.rustup/
+/cargo/
+
+# IDEs and editors
+**/*.rs.bk
+.idea/
+*.iml
+
+# By default, don't include core dumps or logs
+core.*
+*.log
+
+# If using `clippy` or `rustfmt` cache
+.clippy/
+/rustfmt/
+
+# Rust Analyzer
+rust-project.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

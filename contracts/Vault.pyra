@@ -1,0 +1,32 @@
+# Vault Example
+# A simple vault contract for storing tokens
+
+struct Vault<T: Token> {
+    token: T,
+    balance: uint256,
+    owner: address
+}
+
+def init(token_address: address) -> Vault:
+    return Vault {
+        token: token_address,
+        balance: 0,
+        owner: msg.sender
+    }
+
+def deposit(amount: uint256):
+    require amount > 0
+    require token.transfer_from(msg.sender, self, amount)
+    
+    balance += amount
+    
+    # emit Deposit(msg.sender, amount)
+
+def withdraw(amount: uint256):
+    require msg.sender == owner
+    require amount <= balance
+    
+    balance -= amount
+    require token.transfer(msg.sender, amount)
+    
+    # emit Withdraw(msg.sender, amount)

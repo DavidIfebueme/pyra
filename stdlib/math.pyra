@@ -1,0 +1,34 @@
+# Math utilities for safe arithmetic operations
+
+def safe_add(a: uint256, b: uint256) -> uint256:
+    """Safely add two uint256 values with overflow protection"""
+    let result = a + b
+    require result >= a  # Check for overflow
+    return result
+
+def safe_sub(a: uint256, b: uint256) -> uint256:
+    """Safely subtract two uint256 values with underflow protection"""
+    require b <= a  # Check for underflow
+    return a - b
+
+def safe_mul(a: uint256, b: uint256) -> uint256:
+    """Safely multiply two uint256 values with overflow protection"""
+    if a == 0:
+        return 0
+    
+    let result = a * b
+    require result / a == b  # Check for overflow
+    return result
+
+def safe_div(a: uint256, b: uint256) -> uint256:
+    """Safely divide two uint256 values with division by zero protection"""
+    require b > 0  # Check for division by zero
+    return a / b
+
+def min(a: uint256, b: uint256) -> uint256:
+    """Return the minimum of two values"""
+    return a if a < b else b
+
+def max(a: uint256, b: uint256) -> uint256:
+    """Return the maximum of two values"""
+    return a if a > b else b
