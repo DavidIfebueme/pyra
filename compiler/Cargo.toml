@@ -11,9 +11,10 @@ keywords = ["blockchain", "smart-contracts", "evm", "compiler", "solidity"]
 categories = ["development-tools", "compilers"]
 
 [dependencies]
-# Parser dependencies
-nom = "7.1"
-lalrpop-util = "0.19"
+# Lexer and Parser dependencies
+logos = "0.13"          
+chumsky = "0.9"          
+thiserror = "1.0" 
 
 # CLI dependencies
 clap = { version = "4.0", features = ["derive"] }

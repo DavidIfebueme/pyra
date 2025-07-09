@@ -55,7 +55,7 @@ def transfer(to: address, amount: uint256):
 ```
 Source Code (.pyra)
   ↓
-Rust Lexer/Parser (nom + lalrpop)
+Rust Lexer/Parser (logos + chumsky)
   ↓
 AST + Type Checking + Verification (single pass)
   ↓
@@ -76,7 +76,7 @@ Optimized EVM Bytecode (.bin)
 
 | Stage | Tooling/Tech | Why It's Used |
 |-------|--------------|---------------|
-| Lexer/Parser | nom + lalrpop (Rust) | Zero-copy parsing, blazing performance |
+| Lexer/Parser | logos + chumsky (Rust) | Zero-copy parsing, blazing performance |
 | AST + Type Checker | Custom Rust structs | Single-pass compilation, memory efficient |
 | Formal Verification | Z3 SMT solver integration | Mathematical correctness proofs |
 | Gas Estimator | Static analysis engine | Compile-time gas cost prediction |
@@ -152,7 +152,7 @@ def withdraw(amount: uint256):
 
 ## 🎯 v1 Goals
 
-- [ ] **Rust-based lexer/parser** with nom + lalrpop
+- [ ] **Rust-based lexer/parser** with logos + chumsky
 - [ ] **Single-pass AST + type checker**
 - [ ] **Direct EVM bytecode generator**
 - [ ] **Compile-time gas estimation**
@@ -168,8 +168,8 @@ def withdraw(amount: uint256):
 pyra/
 ├── compiler/              # Rust compiler codebase
 │   ├── src/
-│   │   ├── lexer.rs       # nom-based lexer
-│   │   ├── parser.rs      # lalrpop grammar
+│   │   ├── lexer.rs       # logos-based lexer
+│   │   ├── parser.rs      # chumsky grammar
 │   │   ├── ast.rs         # AST definitions
 │   │   ├── typer.rs       # Type checker + inference
 │   │   ├── verifier.rs    # Formal verification (Z3)
