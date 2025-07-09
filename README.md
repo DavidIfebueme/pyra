@@ -50,7 +50,7 @@ def transfer(to: address, amount: uint256):
 - **Generic containers** – `Vec<T>`, `Map<K,V>` (compile-time optimized)
 - No dynamic arrays or mappings (v1)
 
-## ⚡ Blazing-Fast Compiler Architecture
+## Blazing-Fast Compiler Architecture
 
 ```
 Source Code (.pyra)
