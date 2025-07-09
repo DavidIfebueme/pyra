@@ -1,10 +1,10 @@
-# 🔥 Pyra (WIP) – A Pythonic Smart Contract Language for the EVM
+# Pyra (WIP) – A Pythonic Smart Contract Language for the EVM
 
 > A compiled, statically typed, Python-inspired smart contract language designed for the EVM. Pyra brings together developer ergonomics, blazing-fast execution, and gas-optimized output through zero-cost abstractions and ahead-of-time compilation.
 
 ---
 
-## 🧠 Philosophy
+## Philosophy
 
 - **Pythonic Syntax** – clean, readable, indentation-based
 - **Static Typing** – bug-catching, compiler-verified type safety
@@ -16,7 +16,7 @@
 
 ---
 
-## 📐 Language Design
+## Language Design
 
 ### Syntax
 Inspired by Python, but statically typed and compiled:
@@ -72,7 +72,7 @@ Optimized EVM Bytecode (.bin)
 - **Incremental compilation** – only recompile changed code
 - **Zero-copy parsing** – minimal memory allocations
 
-## 🧰 Compiler Stack
+## Compiler Stack
 
 | Stage | Tooling/Tech | Why It's Used |
 |-------|--------------|---------------|
@@ -83,7 +83,7 @@ Optimized EVM Bytecode (.bin)
 | Code Generator | Direct EVM bytecode (Rust) | Maximum performance, no dependencies |
 | CLI | clap (Rust) | `pyra build contracts/MyToken.pyra` |
 
-## 🚀 Unique Differentiators vs Vyper
+## Unique Differentiators vs Vyper
 
 ### 1. **Zero-Cost Abstractions**
 Write high-level code that compiles to the same bytecode as hand-optimized assembly:
@@ -140,7 +140,7 @@ def withdraw(amount: uint256):
     msg.sender.transfer(amount)  # Protected by default
 ```
 
-## 🔐 Security Features
+## Security Features
 
 - **Automatic reentrancy protection** – all external calls are guarded by default
 - **Overflow/underflow checks** – unless explicitly marked `unchecked`
@@ -150,7 +150,7 @@ def withdraw(amount: uint256):
 - **Gas limit analysis** – prevents out-of-gas attacks
 - **Integer overflow detection** – compile-time arithmetic safety
 
-## 🎯 v1 Goals
+## v1 Goals
 
 - [ ] **Rust-based lexer/parser** with logos + chumsky
 - [ ] **Single-pass AST + type checker**
@@ -162,7 +162,7 @@ def withdraw(amount: uint256):
 - [ ] **CLI tool** (`pyra build ...`)
 - [ ] **Example contracts** (ERC20, vault, DEX)
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 pyra/
@@ -186,7 +186,7 @@ pyra/
 └── docs/
 ```
 
-## 🛣️ Roadmap
+## Roadmap
 
 | Week | Milestone |
 |------|-----------|
@@ -196,7 +196,7 @@ pyra/
 | 5 | **Formal verification** + security analysis |
 | 6 | **CLI tool** + working contracts |
 
-## 🧠 Future Features
+## Future Features
 
 - **ZKVM-compatible backend** (Cairo, Risc0)
 - **Gas profiler CLI** with optimization suggestions
@@ -206,7 +206,7 @@ pyra/
 - **Built-in DeFi primitives** (AMM, lending, governance)
 - **IDE integration** (VS Code, Neovim)
 
-## 🧪 Quick Start (once CLI is ready)
+## Quick Start (once CLI is ready)
 
 ```bash
 # Install Pyra compiler
@@ -222,7 +222,7 @@ pyra build contracts/MyToken.pyra
 # - MyToken.proof (verification results)
 ```
 
-## 🏆 Performance Benchmarks vs Vyper
+## Performance Benchmarks vs Vyper
 
 | Metric | Pyra | Vyper |
 |--------|------|-------|
@@ -234,7 +234,7 @@ pyra build contracts/MyToken.pyra
 
 ## 👨‍💻 Author
 
-Built by [DavidIfebueme]
+Built by DavidIfebueme
 
 ## ⚠️ Disclaimer
 
