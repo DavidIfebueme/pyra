@@ -11,27 +11,16 @@ keywords = ["blockchain", "smart-contracts", "evm", "compiler", "solidity"]
 categories = ["development-tools", "compilers"]
 
 [dependencies]
-# Lexer and Parser dependencies
-logos = "0.13"          
-chumsky = "0.9"          
-thiserror = "1.0" 
-
-# CLI dependencies
-clap = { version = "4.0", features = ["derive"] }
-colored = "2.0"
-
-# Formal verification
-z3 = "0.12"
-
-# Utility dependencies
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-anyhow = "1.0"
+logos = "0.13"
 thiserror = "1.0"
 
-[build-dependencies]
-lalrpop = "0.19"
+[dev-dependencies]
+criterion = "0.5"
 
 [[bin]]
-name = "pyra"
-path = "src/main.rs"
+name = "test_lexer"
+path = "src/bin/test_lexer.rs"
+
+[[bench]]
+name = "lexer_bench"
+harness = false
