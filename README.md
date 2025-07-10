@@ -1,4 +1,4 @@
-# Pyra (WIP) – A Pythonic Smart Contract Language for the EVM
+# Pyra – Smart Contract Language for the EVM
 
 > A compiled, statically typed, Python-inspired smart contract language designed for the EVM. Pyra brings together developer ergonomics, blazing-fast execution, and gas-optimized output through zero-cost abstractions and ahead-of-time compilation.
 
