@@ -1,5 +1,6 @@
 use logos::Logos;
 use std::fmt;
+use num_bigint::BigUint;
 
 #[derive(Logos, Debug, Clone, PartialEq)]
 #[logos(skip r"[ \t\f]+")]
@@ -116,8 +117,11 @@ pub enum Token {
     #[token(">", priority = 1)]
     RAngle,
 
-    #[regex(r"[0-9]+", |lex| lex.slice().parse::<u64>().ok())]
-    Number(u64),
+    #[regex(r"[0-9]+", |lex| {
+        BigUint::parse_bytes(lex.slice().as_bytes(), 10)
+    })]
+    Number(BigUint),
+
     
     #[regex(r#""([^"\\]|\\.)*""#, |lex| {
         let s = lex.slice();
@@ -126,9 +130,9 @@ pub enum Token {
     StringLiteral(String),
     
     #[regex(r"0x[0-9a-fA-F]+", |lex| {
-        u64::from_str_radix(&lex.slice()[2..], 16).ok()
+        BigUint::parse_bytes(&lex.slice().as_bytes()[2..], 16)
     })]
-    HexNumber(u64),
+    HexNumber(BigUint),
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Identifier(String),
@@ -159,7 +163,7 @@ impl fmt::Display for Token {
     }
 }
 
-/// Lexer with indentation tracking for Python-like syntax
+// indentation tracking
 pub struct PyraLexer<'a> {
     inner: logos::Lexer<'a, Token>,
     indent_stack: Vec<usize>,
@@ -347,17 +351,35 @@ mod tests {
 
     #[test]
     fn test_numbers() {
+        
         let source = "123 0xff 0x1234";
-        let mut lexer = PyraLexer::new(source);
+        let lexer = PyraLexer::new(source);
         
         let tokens: Vec<Token> = lexer.collect();
         
         assert_eq!(tokens, vec![
-            Token::Number(123),
-            Token::HexNumber(255),
-            Token::HexNumber(0x1234),
+            Token::Number(BigUint::from(123u64)),
+            Token::HexNumber(BigUint::from(255u64)),
+            Token::HexNumber(BigUint::from(0x1234u64)),
         ]);
     }
+
+    #[test]
+    fn test_large_numbers() {
+        
+        let source = "115792089237316195423570985008687907853269984665640564039457584007913129639935"; // 2^256 - 1
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        assert_eq!(tokens.len(), 1);
+        if let Token::Number(n) = &tokens[0] {
+            assert!(n.bits() > 64);
+        } else {
+            panic!("Expected Number token");
+        }
+    }
+
 
     #[test]
     fn test_comparison_vs_generics() {
@@ -457,7 +479,7 @@ mod tests {
             Token::PlusAssign,
             Token::Identifier("amount".to_string()),
             Token::Multiply,
-            Token::Number(2),
+            Token::Number(BigUint::from(2u64)), // Changed this line
         ]);
     }
 
