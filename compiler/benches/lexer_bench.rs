@@ -2,8 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pyra_compiler::lexer::PyraLexer;
 
 fn lexer_benchmark(c: &mut Criterion) {
-    // 🔥 PHASE 1 COMPREHENSIVE STRESS TEST
-    // Tests ALL fixes: BigUint, Bytes, Indentation, Error Handling
+
     let large_contract = r#"
 contract ComplexERC20Token:
     # Storage with massive numbers and addresses
@@ -170,7 +169,7 @@ contract TokenFactory:
     def deploy_token(name: string, symbol: string, supply: uint256) -> address:
         # More complex operations...
         return create_forwarder_to(self)
-"#.repeat(50);  // 50 copies for serious stress testing
+"#.repeat(50);  
 
     c.bench_function("lexer_comprehensive_stress_test", |b| {
         b.iter(|| {
@@ -179,7 +178,6 @@ contract TokenFactory:
         })
     });
     
-    // Additional benchmark for error handling performance
     let error_test_contract = r#"
         def error_prone_function():
             # Mix of valid and edge-case tokens that stress error detection
