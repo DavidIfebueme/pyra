@@ -162,6 +162,11 @@ pub enum Token {
     #[regex(r"#[^\n]*", logos::skip)]
     Comment,
 
+    #[regex(r"[ \t]+\n", |_| ())] 
+    WhitespaceOnlyLine,
+
+    IndentationError,
+    MixedIndentationError,
     Error,
 }
 
@@ -179,6 +184,9 @@ impl fmt::Display for Token {
                 }
                 write!(f, ")")
             },
+            Token::MixedIndentationError => write!(f, "MixedIndentationError"),
+            Token::IndentationError => write!(f, "IndentationError"),
+            Token::WhitespaceOnlyLine => write!(f, "WhitespaceOnlyLine"),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -191,6 +199,13 @@ pub struct PyraLexer<'a> {
     pending_dedents: usize,
     pending_indent: bool,
     at_line_start: bool,
+    indent_type: Option<IndentType>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum IndentType {
+    Spaces,
+    Tabs,
 }
 
 impl<'a> PyraLexer<'a> {
@@ -201,6 +216,7 @@ impl<'a> PyraLexer<'a> {
             pending_dedents: 0,
             pending_indent: false,
             at_line_start: true,
+            indent_type: None,
         }
     }
 
@@ -225,7 +241,9 @@ impl<'a> PyraLexer<'a> {
                     _ => {
                         if self.at_line_start {
                             if self.has_indentation() {
-                                self.handle_indentation();
+                                if let Some(error_token) = self.handle_indentation() {
+                                    return Some(error_token);
+                                }
                             }
                             self.at_line_start = false;
                             
@@ -266,34 +284,64 @@ impl<'a> PyraLexer<'a> {
         line_content.chars().any(|c| c == ' ' || c == '\t')
     }
 
-    fn handle_indentation(&mut self) {
+    fn handle_indentation(&mut self) -> Option<Token> {
         let source = self.inner.source();
         let current_pos = self.inner.span().start;
         
         let mut line_start = current_pos;
         while line_start > 0 {
-            let prev_char = source.chars().nth(line_start - 1);
-            if let Some('\n') = prev_char {
+            if source.as_bytes()[line_start - 1] == b'\n' {
                 break;
             }
             line_start -= 1;
         }
         
+        let line_prefix = &source[line_start..current_pos];
+        
+        let has_spaces = line_prefix.contains(' ');
+        let has_tabs = line_prefix.contains('\t');
+        
+        if has_spaces && has_tabs {
+            return Some(Token::MixedIndentationError);
+        }
+        
+        let current_indent_type = if has_tabs {
+            IndentType::Tabs
+        } else if has_spaces {
+            IndentType::Spaces
+        } else {
+            return None;
+        };
+        
+        match &self.indent_type {
+            None => {
+                self.indent_type = Some(current_indent_type);
+            }
+            Some(prev_type) if *prev_type != current_indent_type => {
+                return Some(Token::MixedIndentationError);
+            }
+            _ => {}
+        }
+        
         let mut indent = 0;
-        for ch in source[line_start..current_pos].chars() {
-            match ch {
-                ' ' => indent += 1,
-                '\t' => indent += 8,
+        for byte in line_prefix.bytes() {
+            match byte {
+                b' ' => indent += 1,
+                b'\t' => indent += 8,
                 _ => break,
             }
         }
-
+        
         let current_level = *self.indent_stack.last().unwrap();
-
+        
         if indent > current_level {
             self.indent_stack.push(indent);
             self.pending_indent = true;
         } else if indent < current_level {
+            if !self.indent_stack.contains(&indent) {
+                return Some(Token::IndentationError);
+            }
+            
             while let Some(&level) = self.indent_stack.last() {
                 if level <= indent {
                     break;
@@ -302,6 +350,8 @@ impl<'a> PyraLexer<'a> {
                 self.pending_dedents += 1;
             }
         }
+        
+        None
     }
 
     pub fn line_col(&self) -> (usize, usize) {
@@ -500,7 +550,7 @@ mod tests {
             Token::PlusAssign,
             Token::Identifier("amount".to_string()),
             Token::Multiply,
-            Token::Number(BigUint::from(2u64)), // Changed this line
+            Token::Number(BigUint::from(2u64)),
         ]);
     }
 
@@ -564,5 +614,55 @@ mod tests {
             Token::BytesLiteral(vec![0x12, 0x34]),
             Token::BytesLiteral(vec![0xab, 0xcd, 0xef]),  
         ]);
+    }
+
+    #[test]
+    fn test_mixed_indentation_error() {
+        let source = "def func():\n    line1\n\tline2";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        assert!(tokens.iter().any(|t| matches!(t, Token::MixedIndentationError)));
+    }
+
+    #[test]
+    fn test_consistent_spaces() {
+        let source = "def func():\n    line1\n    line2\n        nested";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        assert!(!tokens.iter().any(|t| matches!(t, Token::MixedIndentationError)));
+    }
+
+    #[test]
+    fn test_consistent_tabs() {
+        let source = "def func():\n\tline1\n\tline2\n\t\tnested";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+
+        assert!(!tokens.iter().any(|t| matches!(t, Token::MixedIndentationError)));
+    }
+
+    #[test]
+    fn test_invalid_dedent() {
+        let source = "def func():\n    line1\n        nested\n   invalid_dedent";  // 3 spaces - invalid
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        assert!(tokens.iter().any(|t| matches!(t, Token::IndentationError)));
+    }
+
+    #[test]
+    fn test_empty_lines_ignored() {
+        let source = "def func():\n    line1\n\n    line2"; 
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        assert!(!tokens.iter().any(|t| matches!(t, Token::IndentationError | Token::MixedIndentationError)));
     }
 }
