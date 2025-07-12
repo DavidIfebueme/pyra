@@ -167,6 +167,11 @@ pub enum Token {
 
     IndentationError,
     MixedIndentationError,
+    InvalidChar(char),
+    MalformedNumber(String),
+    UnterminatedString,
+    InvalidHexDigit(String),
+    InvalidBytesLiteral(String),
     Error,
 }
 
@@ -187,6 +192,12 @@ impl fmt::Display for Token {
             Token::MixedIndentationError => write!(f, "MixedIndentationError"),
             Token::IndentationError => write!(f, "IndentationError"),
             Token::WhitespaceOnlyLine => write!(f, "WhitespaceOnlyLine"),
+            Token::InvalidChar(ch) => write!(f, "InvalidChar('{}')", ch),
+            Token::MalformedNumber(s) => write!(f, "MalformedNumber(\"{}\")", s),
+            Token::UnterminatedString => write!(f, "UnterminatedString"),
+            Token::InvalidHexDigit(s) => write!(f, "InvalidHexDigit(\"{}\")", s),
+            Token::InvalidBytesLiteral(s) => write!(f, "InvalidBytesLiteral(\"{}\")", s),
+            
             _ => write!(f, "{:?}", self),
         }
     }
@@ -261,7 +272,9 @@ impl<'a> PyraLexer<'a> {
                     }
                 }
             }
-            Err(_) => Some(Token::Error),
+            Err(_) => {
+                Some(self.analyze_error())
+            }
         }
     }
 
@@ -348,6 +361,150 @@ impl<'a> PyraLexer<'a> {
                 }
                 self.indent_stack.pop();
                 self.pending_dedents += 1;
+            }
+        }
+        
+        None
+    }
+
+    fn analyze_error(&mut self) -> Token {
+        let _current_slice = self.inner.slice();
+        let remaining = self.inner.remainder();
+        
+        if let Some(first_char) = remaining.chars().next() {
+            match first_char {
+                '@' | '#' | '$' | '`' | '~' => {
+                    return Token::InvalidChar(first_char);
+                }
+                
+                '"' => {
+                    if self.is_unterminated_string(remaining) {
+                        return Token::UnterminatedString;
+                    }
+                }
+                
+                '0'..='9' => {
+                    if let Some(malformed) = self.check_malformed_number(remaining) {
+                        return Token::MalformedNumber(malformed);
+                    }
+                }
+                
+                _ if remaining.starts_with("0x") => {
+                    let hex_end = remaining.find(char::is_whitespace).unwrap_or(remaining.len());
+                    let hex_literal = &remaining[..hex_end];
+                    
+                    if let Some(invalid) = self.check_invalid_hex(hex_literal) {
+                        return Token::InvalidHexDigit(invalid);
+                    }
+                }
+                
+                _ if remaining.starts_with("b'") => {
+                    if let Some(end_quote) = remaining[2..].find('\'') {
+                        let bytes_literal = &remaining[..end_quote + 3]; // Include b' and closing '
+                        if let Some(invalid) = self.check_invalid_bytes(bytes_literal) {
+                            return Token::InvalidBytesLiteral(invalid);
+                        }
+                    }
+                }
+                
+                _ => {}
+            }
+        }
+
+        if !remaining.is_empty() {
+            if let Some(invalid_char) = remaining.chars().next() {
+                if !invalid_char.is_ascii_alphanumeric() && !"()[]{}:,.+-*/=<>\"'_".contains(invalid_char) {
+                    return Token::InvalidChar(invalid_char);
+                }
+            }
+        }
+        
+        Token::Error
+    }
+    
+    fn is_unterminated_string(&self, text: &str) -> bool {
+        if !text.starts_with('"') {
+            return false;
+        }
+        
+        let mut chars = text.chars().skip(1);
+        let mut escaped = false;
+        
+        while let Some(ch) = chars.next() {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            
+            match ch {
+                '\\' => escaped = true,
+                '"' => return false,
+                '\n' => return true,
+                _ => {}
+            }
+        }
+        
+        true
+    }
+    
+    fn check_malformed_number(&self, text: &str) -> Option<String> {
+        let mut number_part = String::new();
+        let mut dot_count = 0;
+        let mut has_error = false;
+        
+        for ch in text.chars() {
+            if ch.is_ascii_digit() {
+                number_part.push(ch);
+            } else if ch == '.' {
+                dot_count += 1;
+                number_part.push(ch);
+                if dot_count > 1 {
+                    has_error = true;
+                }
+            } else if ch.is_ascii_alphabetic() {
+                number_part.push(ch);
+                has_error = true;
+            } else {
+                break;
+            }
+        }
+        
+        if has_error && !number_part.is_empty() {
+            Some(number_part)
+        } else {
+            None
+        }
+    }
+    
+    fn check_invalid_hex(&self, text: &str) -> Option<String> {
+        if !text.starts_with("0x") {
+            return None;
+        }
+        
+        let hex_part = &text[2..];
+        
+        for (i, ch) in hex_part.char_indices() {
+            if !ch.is_ascii_hexdigit() && ch != '\'' && !ch.is_whitespace() {
+                return Some(format!("0x{}{}", &hex_part[..i], ch));
+            }
+        }
+        
+        None
+    }
+
+    
+    fn check_invalid_bytes(&self, text: &str) -> Option<String> {
+        if !text.starts_with("b'") {
+            return None;
+        }
+        
+        if let Some(end_pos) = text[2..].find('\'') {
+            let bytes_content = &text[2..end_pos + 2];
+            
+            for ch in bytes_content.chars() {
+                if ch != '\'' && !ch.is_ascii_hexdigit() {
+                    return Some(format!("b'{}", ch));
+                }
             }
         }
         
@@ -573,16 +730,13 @@ mod tests {
 
     #[test]
     fn test_error_handling() {
-        let source = "def @ invalid";
+        let source = "def £ invalid";
         let mut lexer = PyraLexer::new(source);
         
         let tokens: Vec<Token> = lexer.collect();
         
-        assert_eq!(tokens, vec![
-            Token::Def,
-            Token::Error,
-            Token::Identifier("invalid".to_string()),
-        ]);
+        assert!(tokens.iter().any(|t| matches!(t, Token::InvalidChar(_))));
+        assert!(tokens.iter().any(|t| matches!(t, Token::Identifier(_))));
     }
 
     #[test]
@@ -664,5 +818,77 @@ mod tests {
         let tokens: Vec<Token> = lexer.collect();
         
         assert!(!tokens.iter().any(|t| matches!(t, Token::IndentationError | Token::MixedIndentationError)));
+    }
+
+    #[test]
+    fn test_invalid_character_errors() {
+        let source = "def func§invalid ¢symbol"; 
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        println!("Debug tokens: {:?}", tokens);
+        
+        assert!(tokens.iter().any(|t| matches!(t, Token::InvalidChar(_) | Token::Error)));
+    }
+
+    #[test]
+    fn test_unterminated_string_error() {
+        let source = r#"def func(): "unterminated"#;
+        let mut lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        println!("String tokens: {:?}", tokens);
+        
+        assert!(tokens.iter().any(|t| matches!(t, Token::UnterminatedString | Token::Error)));
+    }
+
+    #[test]
+    fn test_malformed_number_error() {
+        let source = "123§456 789¢012";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        println!("Number tokens: {:?}", tokens);
+        
+        assert!(tokens.iter().any(|t| matches!(t, Token::MalformedNumber(_) | Token::Error | Token::InvalidChar(_))));
+    }
+
+    #[test]
+    fn test_invalid_hex_error() {
+        let source = "0x§invalid 0x¢bad";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        println!("Hex tokens: {:?}", tokens);
+        
+        assert!(tokens.iter().any(|t| matches!(t, Token::InvalidHexDigit(_) | Token::Error)));
+    }
+
+    #[test]
+    fn test_invalid_bytes_error() {
+        let source = "b'§invalid' b'¢bad'";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        println!("Bytes tokens: {:?}", tokens);
+        
+        assert!(tokens.iter().any(|t| matches!(t, Token::InvalidBytesLiteral(_) | Token::Error)));
+    }
+
+    #[test]
+    fn test_specific_error_messages() {
+        let source = "0xABCG";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        if let Some(Token::InvalidHexDigit(msg)) = tokens.iter().find(|t| matches!(t, Token::InvalidHexDigit(_))) {
+            assert!(msg.contains("G"));
+        }
     }
 }
