@@ -128,7 +128,21 @@ pub enum Token {
         Some(s[1..s.len()-1].to_string())
     })]
     StringLiteral(String),
-    
+
+    #[regex(r"b'[0-9a-fA-F]*'", |lex| {
+        let hex_str = &lex.slice()[2..lex.slice().len()-1];
+        let mut bytes = Vec::new();
+        for chunk in hex_str.as_bytes().chunks(2) {
+            if chunk.len() == 2 {
+                let byte_str = std::str::from_utf8(chunk).ok()?;
+                let byte_val = u8::from_str_radix(byte_str, 16).ok()?;
+                bytes.push(byte_val);
+            }
+        }
+        Some(bytes)
+    })]
+    BytesLiteral(Vec<u8>),
+        
     #[regex(r"0x[0-9a-fA-F]+", |lex| {
         BigUint::parse_bytes(&lex.slice().as_bytes()[2..], 16)
     })]
@@ -158,6 +172,13 @@ impl fmt::Display for Token {
             Token::Number(n) => write!(f, "Number({})", n),
             Token::StringLiteral(s) => write!(f, "String(\"{}\")", s),
             Token::HexNumber(n) => write!(f, "Hex(0x{:x})", n),
+            Token::BytesLiteral(bytes) => {
+                write!(f, "Bytes(0x")?;
+                for byte in bytes {
+                    write!(f, "{:02x}", byte)?;
+                }
+                write!(f, ")")
+            },
             _ => write!(f, "{:?}", self),
         }
     }
@@ -511,6 +532,37 @@ mod tests {
             Token::Def,
             Token::Error,
             Token::Identifier("invalid".to_string()),
+        ]);
+    }
+
+    #[test]
+    fn test_bytes_syntax() {
+        let source = "b'' b'ab' b'1234abcd'";  
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        assert_eq!(tokens, vec![
+            Token::BytesLiteral(vec![]),
+            Token::BytesLiteral(vec![0xab]),
+            Token::BytesLiteral(vec![0x12, 0x34, 0xab, 0xcd]),
+        ]);
+    }
+
+    #[test]
+    fn test_bytes_vs_hex_disambiguation() {
+        let source = "0x1 0x12 0x123 0x1234 b'1234' b'abcdef'";
+        let lexer = PyraLexer::new(source);
+        
+        let tokens: Vec<Token> = lexer.collect();
+        
+        assert_eq!(tokens, vec![
+            Token::HexNumber(BigUint::from(1u64)),        
+            Token::HexNumber(BigUint::from(0x12u64)),      
+            Token::HexNumber(BigUint::from(0x123u64)),      
+            Token::HexNumber(BigUint::from(0x1234u64)),
+            Token::BytesLiteral(vec![0x12, 0x34]),
+            Token::BytesLiteral(vec![0xab, 0xcd, 0xef]),  
         ]);
     }
 }
