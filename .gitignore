@@ -1,6 +1,5 @@
 # Rust
 /target/
-Cargo.lock
 
 # If you're publishing a library, include Cargo.lock; otherwise, ignore it for apps.
 /**/target/
