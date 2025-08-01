@@ -2,7 +2,7 @@ use logos::Logos;
 use std::fmt;
 use num_bigint::BigUint;
 
-#[derive(Logos, Debug, Clone, PartialEq)]
+#[derive(Logos, Debug, Clone, PartialEq, Eq, Hash)]
 #[logos(skip r"[ \t\f]+")]
 pub enum Token {
     #[token("def")]
@@ -203,7 +203,6 @@ impl fmt::Display for Token {
     }
 }
 
-// indentation tracking
 pub struct PyraLexer<'a> {
     inner: logos::Lexer<'a, Token>,
     indent_stack: Vec<usize>,

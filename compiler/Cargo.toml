@@ -14,6 +14,7 @@ categories = ["development-tools", "compilers"]
 logos = "0.13"
 thiserror = "1.0"
 num-bigint = "0.4"
+chumsky = "0.9"
 
 [dev-dependencies]
 criterion = "0.5"
