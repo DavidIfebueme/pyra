@@ -1,24 +1,21 @@
-# Pyra – Smart Contract Language for the EVM
+# Pyra: a smart contract language for the EVM
 
-> A compiled, statically typed, Python-inspired smart contract language designed for the EVM. Pyra brings together developer ergonomics, blazing-fast execution, and gas-optimized output through zero-cost abstractions and ahead-of-time compilation.
-
----
+A compiled, statically typed language with Python-like syntax. It compiles directly to EVM bytecode. The focus is clarity, safety, and predictable gas use.
 
 ## Philosophy
 
-- **Pythonic Syntax** – clean, readable, indentation-based
-- **Static Typing** – bug-catching, compiler-verified type safety
-- **Ahead-of-Time Compilation** – no VM overhead, optimized bytecode
-- **Gas Efficiency by Design** – no hidden costs, predictable gas usage
-- **Security-Focused** – reentrancy-safe, overflow/underflow checked
-- **Minimal Runtime** – zero-cost abstractions, no runtime bloat
-- **EVM-first** – compiles directly to EVM bytecode (no Yul dependency)
+- Python-like, indentation-based syntax
+- Static typing
+- Ahead-of-time compilation
+- Predictable gas usage
+- Security-focused: reentrancy checks and arithmetic checks
+- Minimal runtime
+- EVM-first: compiles directly to EVM bytecode (no Yul dependency)
 
----
-
-## Language Design
+## Language design
 
 ### Syntax
+
 Inspired by Python, but statically typed and compiled:
 
 ```py
@@ -30,27 +27,28 @@ def transfer(to: address, amount: uint256):
 ```
 
 ### Features
+
 - Indentation-based blocks
-- Immutable-by-default variables
-- Explicit mutability with `mut`
+- Immutable by default; use `mut` for mutable state
 - Static typing with built-in types
-- **Zero-cost abstractions** – high-level features with no runtime overhead
-- **Compile-time generics/templates** – type-safe code reuse without gas costs
-- **Automatic reentrancy protection** – built into function calls by default
-- **Compile-time gas estimation** – know exact gas costs before deployment
-- **Built-in formal verification** – mathematical proofs of contract correctness
-- No inheritance – favor modularity
+- Abstractions compile with no runtime overhead
+- Generics/templates are resolved at compile time
+- Reentrancy protection is enabled by default
+- Compile-time gas estimation
+- Built-in hooks for formal verification
+- No inheritance; prefer modular composition
 - No runtime garbage collection
 - Compile-time constants using `const`
 
-### Built-in Types
+### Built-in types
+
 - `uint256`, `int256`, `bool`, `address`, `bytes`
 - Fixed-size arrays
 - `struct` (custom types)
-- **Generic containers** – `Vec<T>`, `Map<K,V>` (compile-time optimized)
-- No dynamic arrays or mappings (v1)
+- Generic containers such as `Vec<T>` and `Map<K, V>` (compile-time optimized)
+- No dynamic arrays or mappings in v1
 
-## Blazing-Fast Compiler Architecture
+## Compiler architecture
 
 ```
 Source Code (.pyra)
@@ -64,29 +62,31 @@ Direct EVM Bytecode Generation
 Optimized EVM Bytecode (.bin)
 ```
 
-**Why This Is Blazing Fast:**
-- **Rust compiler** – native performance, no Python overhead
-- **Single-pass compilation** – parse, type-check, and verify in one go
-- **Direct bytecode generation** – no Yul/solc dependency
-- **Parallel compilation** – multiple contracts compiled simultaneously
-- **Incremental compilation** – only recompile changed code
-- **Zero-copy parsing** – minimal memory allocations
+### Compiler notes
 
-## Compiler Stack
+- Implemented in Rust
+- Single-pass compilation: parse, type-check, and verify in one pass
+- Direct bytecode generation: no Yul or solc dependency
+- Parallel and incremental compilation
+- Zero-copy parsing to reduce allocations
 
-| Stage | Tooling/Tech | Why It's Used |
-|-------|--------------|---------------|
-| Lexer/Parser | logos + chumsky (Rust) | Zero-copy parsing, blazing performance |
-| AST + Type Checker | Custom Rust structs | Single-pass compilation, memory efficient |
-| Formal Verification | Z3 SMT solver integration | Mathematical correctness proofs |
+## Compiler stack
+
+| Stage | Tooling/Tech | Notes |
+|-------|--------------|-------|
+| Lexer/Parser | logos + chumsky (Rust) | Zero-copy parsing and fast performance |
+| AST + Type Checker | Custom Rust structs | Single-pass and memory efficient |
+| Formal Verification | Z3 SMT solver integration | Supports proofs of correctness |
 | Gas Estimator | Static analysis engine | Compile-time gas cost prediction |
-| Code Generator | Direct EVM bytecode (Rust) | Maximum performance, no dependencies |
+| Code Generator | Direct EVM bytecode (Rust) | No external compiler dependency |
 | CLI | clap (Rust) | `pyra build contracts/MyToken.pyra` |
 
-## Unique Differentiators vs Vyper
+## How it differs from Vyper
 
-### 1. **Zero-Cost Abstractions**
-Write high-level code that compiles to the same bytecode as hand-optimized assembly:
+### 1. Abstractions without runtime cost
+
+Write high-level code that compiles to the same bytecode as hand-written versions:
+
 ```py
 # This generic function...
 def safe_add<T: Numeric>(a: T, b: T) -> T:
@@ -97,16 +97,17 @@ def add_uint256(a: uint256, b: uint256) -> uint256:
     return a + b
 ```
 
-### 2. **Compile-Time Gas Estimation**
+### 2. Compile-time gas estimation
+
 ```py
-# Compiler tells you exact gas costs:
+# Compiler provides gas costs:
 def transfer(to: address, amount: uint256):  # Gas: 21,000 + 5,000 SSTORE
     balances[msg.sender] -= amount           # Gas: 5,000 SSTORE
     balances[to] += amount                   # Gas: 20,000 SSTORE
 ```
 
-### 3. **Built-in Formal Verification**
-Mathematical proofs that your contract is correct:
+### 3. Built-in formal verification
+
 ```py
 def withdraw(amount: uint256):
     require amount <= balances[msg.sender]
@@ -117,8 +118,10 @@ def withdraw(amount: uint256):
     msg.sender.transfer(amount)
 ```
 
-### 4. **Advanced Generics/Templates**
-Type-safe code reuse without runtime costs:
+### 4. Generics and templates
+
+Type-safe code reuse without runtime cost:
+
 ```py
 # Generic data structures
 struct Vault<T: Token> {
@@ -130,39 +133,40 @@ struct Vault<T: Token> {
 def swap<A: ERC20, B: ERC20>(token_a: A, token_b: B, amount: uint256)
 ```
 
-### 5. **Automatic Reentrancy Protection**
-Built into the language, not an afterthought:
+### 5. Automatic reentrancy protection
+
+Built into the language:
+
 ```py
 def withdraw(amount: uint256):
-    # Automatically generates reentrancy guard
-    # No need for manual mutex or checks
+    # Automatically generates a reentrancy guard
     balances[msg.sender] -= amount
-    msg.sender.transfer(amount)  # Protected by default
+    msg.sender.transfer(amount)  # Guarded by default
 ```
 
-## Security Features
+## Security features
 
-- **Automatic reentrancy protection** – all external calls are guarded by default
-- **Overflow/underflow checks** – unless explicitly marked `unchecked`
-- **Formal verification integration** – mathematical proofs of correctness
-- **Compile-time bounds checking** – array access verified at compile time
-- **Immutable by default** – prevents accidental state mutations
-- **Gas limit analysis** – prevents out-of-gas attacks
-- **Integer overflow detection** – compile-time arithmetic safety
+- Automatic reentrancy protection on external calls
+- Overflow and underflow checks unless explicitly marked `unchecked`
+- Formal verification integration
+- Compile-time bounds checking for array access
+- Immutable by default to prevent accidental state changes
+- Gas limit analysis
+- Compile-time integer overflow detection
 
-## v1 Goals
+## v1 goals
 
-- [ ] **Rust-based lexer/parser** with logos + chumsky
-- [ ] **Single-pass AST + type checker**
-- [ ] **Direct EVM bytecode generator**
-- [ ] **Compile-time gas estimation**
-- [ ] **Basic formal verification** (Z3 integration)
-- [ ] **Automatic reentrancy protection**
-- [ ] **Generic system** with zero-cost abstractions
-- [ ] **CLI tool** (`pyra build ...`)
-- [ ] **Example contracts** (ERC20, vault, DEX)
+- [ ] Rust-based lexer and parser with logos and chumsky
+- [ ] Single-pass AST and type checker
+- [ ] Direct EVM bytecode generator
+- [ ] Compile-time gas estimation
+- [ ] Basic formal verification (Z3 integration)
+- [ ] Automatic reentrancy protection
+- [ ] Generics with no runtime overhead
+- [ ] CLI tool (`pyra build ...`)
+- [ ] Example contracts (ERC20, vault, DEX)
 
-## Project Structure
+## Project structure
 
 ```
 pyra/
@@ -171,11 +175,11 @@ pyra/
 │   │   ├── lexer.rs       # logos-based lexer
 │   │   ├── parser.rs      # chumsky grammar
 │   │   ├── ast.rs         # AST definitions
-│   │   ├── typer.rs       # Type checker + inference
+│   │   ├── typer.rs       # Type checker and inference
 │   │   ├── verifier.rs    # Formal verification (Z3)
 │   │   ├── gas.rs         # Gas estimation engine
 │   │   ├── codegen.rs     # Direct EVM bytecode generation
-│   │   ├── security.rs    # Reentrancy + security analysis
+│   │   ├── security.rs    # Reentrancy and security analysis
 │   │   └── main.rs        # CLI entry point
 │   ├── Cargo.toml
 │   └── build.rs
@@ -190,26 +194,26 @@ pyra/
 
 | Week | Milestone |
 |------|-----------|
-| 1–2 | **Rust lexer/parser** + basic AST |
-| 3 | **Type checker** + generic system |
-| 4 | **Direct EVM codegen** + gas estimation |
-| 5 | **Formal verification** + security analysis |
-| 6 | **CLI tool** + working contracts |
+| 1-2 | Rust lexer and parser plus basic AST |
+| 3 | Type checker and generics |
+| 4 | Direct EVM code generation and gas estimation |
+| 5 | Formal verification and security analysis |
+| 6 | CLI tool and working contracts |
 
-## Future Features
+## Future features
 
-- **ZKVM-compatible backend** (Cairo, Risc0)
-- **Gas profiler CLI** with optimization suggestions
-- **WASM output** for off-chain simulation
-- **Contract interface generator** (ABIs)
-- **Multi-chain support** (EVM + Solana + Move)
-- **Built-in DeFi primitives** (AMM, lending, governance)
-- **IDE integration** (VS Code, Neovim)
+- ZKVM-compatible backend (Cairo, Risc0)
+- Gas profiler CLI with optimization suggestions
+- WASM output for off-chain simulation
+- Contract interface generator (ABIs)
+- Multi-chain support (EVM, Solana, Move)
+- Built-in DeFi primitives (AMM, lending, governance)
+- IDE integration (VS Code, Neovim)
 
-## Quick Start (once CLI is ready)
+## Quick start (once the CLI is ready)
 
 ```bash
-# Install Pyra compiler
+# Install the Pyra compiler
 cargo install pyra-compiler
 
 # Compile a contract
@@ -222,7 +226,7 @@ pyra build contracts/MyToken.pyra
 # - MyToken.proof (verification results)
 ```
 
-## Performance Benchmarks vs Vyper
+## Performance benchmarks vs Vyper
 
 | Metric | Pyra | Vyper |
 |--------|------|-------|
@@ -232,10 +236,10 @@ pyra build contracts/MyToken.pyra
 | Type Checking | **Real-time** | Slow |
 | Formal Verification | **Built-in** | External tools |
 
-## 👨‍💻 Author
+## Author
 
 Built by DavidIfebueme
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This is an experimental project. Use at your own risk. Not production-ready until v1 is officially tagged and audited.
