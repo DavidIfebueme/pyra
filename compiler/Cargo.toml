@@ -35,3 +35,7 @@ path = "src/bin/pyra.rs"
 [[bench]]
 name = "lexer_bench"
 harness = false
+
+[[bench]]
+name = "compile_bench"
+harness = false
