@@ -198,6 +198,10 @@ cython_debug/
 artifacts/
 cache/
 typechain/
+
+# Local planning docs
+MVP_REMAINING.md
+MVP_STEPS.md
 typechain-types/
 
 # Hardhat
