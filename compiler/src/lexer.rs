@@ -207,6 +207,7 @@ pub struct PyraLexer<'a> {
     indent_stack: Vec<usize>,
     pending_dedents: usize,
     pending_indent: bool,
+    pending_token: Option<Token>,
     at_line_start: bool,
     indent_type: Option<IndentType>,
 }
@@ -224,6 +225,7 @@ impl<'a> PyraLexer<'a> {
             indent_stack: vec![0],
             pending_dedents: 0,
             pending_indent: false,
+            pending_token: None,
             at_line_start: true,
             indent_type: None,
         }
@@ -240,8 +242,12 @@ impl<'a> PyraLexer<'a> {
             return Some(Token::Dedent);
         }
 
-        match self.inner.next()? {
-            Ok(token) => match token {
+        if let Some(tok) = self.pending_token.take() {
+            return Some(tok);
+        }
+
+        match self.inner.next() {
+            Some(Ok(token)) => match token {
                 Token::Newline => {
                     self.at_line_start = true;
                     Some(Token::Newline)
@@ -256,19 +262,32 @@ impl<'a> PyraLexer<'a> {
                         self.at_line_start = false;
 
                         if self.pending_indent || self.pending_dedents > 0 {
-                            if self.pending_indent {
+                            let out = if self.pending_indent {
                                 self.pending_indent = false;
-                                return Some(Token::Indent);
-                            } else if self.pending_dedents > 0 {
+                                Token::Indent
+                            } else {
                                 self.pending_dedents -= 1;
-                                return Some(Token::Dedent);
-                            }
+                                Token::Dedent
+                            };
+
+                            self.pending_token = Some(token);
+                            return Some(out);
                         }
                     }
                     Some(token)
                 }
             },
-            Err(_) => Some(self.analyze_error()),
+            Some(Err(_)) => Some(self.analyze_error()),
+            None => {
+                let depth = self.indent_stack.len().saturating_sub(1);
+                if depth == 0 {
+                    None
+                } else {
+                    self.indent_stack.truncate(1);
+                    self.pending_dedents = depth - 1;
+                    Some(Token::Dedent)
+                }
+            }
         }
     }
 

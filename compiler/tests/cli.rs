@@ -66,3 +66,28 @@ fn pyra_build_fails_on_parse_error() {
         .failure()
         .stderr(contains("parse failed"));
 }
+
+#[test]
+fn pyra_build_parses_multiline_require() {
+    let mut file = NamedTempFile::new().unwrap();
+    write!(
+        file,
+        "def t() -> bool:\n    require true\n    return true\n"
+    )
+    .unwrap();
+    let path = file.path().to_path_buf();
+
+    let out_dir = TempDir::new().unwrap();
+
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("pyra"));
+    cmd.arg("build")
+        .arg(&path)
+        .arg("--out-dir")
+        .arg(out_dir.path())
+        .assert()
+        .success();
+
+    let stem = path.file_stem().unwrap().to_str().unwrap();
+    assert!(out_dir.path().join(format!("{stem}.abi")).exists());
+    assert!(out_dir.path().join(format!("{stem}.bin")).exists());
+}
