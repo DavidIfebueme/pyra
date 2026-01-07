@@ -16,6 +16,7 @@ thiserror = "1.0"
 num-bigint = "0.4"
 chumsky = "0.9"
 clap = { version = "4", features = ["derive"] }
+hex = "0.4"
 
 [dev-dependencies]
 criterion = "0.5"

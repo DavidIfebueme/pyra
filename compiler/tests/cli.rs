@@ -35,6 +35,11 @@ fn pyra_build_parses_valid_file() {
     let stem = path.file_stem().unwrap().to_str().unwrap();
     let abi_path = out_dir.path().join(format!("{stem}.abi"));
     assert!(abi_path.exists());
+
+    let bin_path = out_dir.path().join(format!("{stem}.bin"));
+    assert!(bin_path.exists());
+    let bin = std::fs::read_to_string(bin_path).unwrap();
+    assert!(!bin.trim().is_empty());
 }
 
 #[test]
