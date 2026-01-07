@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-install-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Test
+        run: cargo test --manifest-path compiler/Cargo.toml
+
+      - name: Install
+        run: cargo install --locked --path compiler
+
+      - name: E2E
+        run: |
+          pyra --help >/dev/null
+          pyra build contracts/ERC20.pyra
+          pyra build contracts/Vault.pyra
