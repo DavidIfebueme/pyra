@@ -107,3 +107,19 @@ fn pyra_build_erc20_contract() {
     assert!(out_dir.path().join("ERC20.abi").exists());
     assert!(out_dir.path().join("ERC20.bin").exists());
 }
+
+#[test]
+fn pyra_build_vault_contract() {
+    let out_dir = TempDir::new().unwrap();
+
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("pyra"));
+    cmd.arg("build")
+        .arg("../contracts/Vault.pyra")
+        .arg("--out-dir")
+        .arg(out_dir.path())
+        .assert()
+        .success();
+
+    assert!(out_dir.path().join("Vault.abi").exists());
+    assert!(out_dir.path().join("Vault.bin").exists());
+}

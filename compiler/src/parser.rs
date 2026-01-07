@@ -141,10 +141,22 @@ fn type_parser() -> impl Parser<Token, Type, Error = ParseError> {
     ))
 }
 
+fn generic_params_parser() -> impl Parser<Token, (), Error = ParseError> {
+    let param = identifier()
+        .then(just(Token::Colon).ignore_then(type_parser()).or_not())
+        .ignored();
+
+    just(Token::Less)
+        .ignore_then(param.separated_by(just(Token::Comma)).allow_trailing())
+        .then_ignore(just(Token::Greater))
+        .ignored()
+}
+
 fn struct_parser() -> impl Parser<Token, StructDef, Error = ParseError> {
     let sep = choice((just(Token::Comma).ignore_then(nl()).ignored(), nl1()));
     just(Token::Struct)
         .ignore_then(identifier())
+        .then_ignore(generic_params_parser().or_not())
         .then_ignore(nl())
         .then_ignore(just(Token::LBrace))
         .then_ignore(nl())
