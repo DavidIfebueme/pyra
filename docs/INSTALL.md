@@ -18,7 +18,7 @@ pyra build contracts/ERC20.pyra
 pyra build contracts/Vault.pyra
 ```
 
-## Option B: Install from GitHub (if crates.io publish isn't done yet)
+## Option B: Install from GitHub (fallback)
 
 ```bash
 cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler

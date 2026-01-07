@@ -216,12 +216,15 @@ pyra/
 # Install (crates.io)
 cargo install --locked pyra-compiler
 
-# If crates.io publish isn't done yet
-# cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
-
 # Compile example contracts
 pyra build contracts/ERC20.pyra
 pyra build contracts/Vault.pyra
+```
+
+Fallback (GitHub):
+
+```bash
+cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
 ```
 
 Outputs:
