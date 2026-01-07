@@ -1,6 +1,6 @@
 use crate::parser::{parse_from_source, ParseError};
 use crate::{program_to_abi_json, AbiError};
-use crate::{program_to_runtime_bytecode, CodegenError};
+use crate::{program_to_deploy_bytecode, CodegenError};
 use crate::Program;
 use std::path::Path;
 use std::path::PathBuf;
@@ -54,7 +54,7 @@ pub fn compile_file_to_abi_and_bin(
 ) -> Result<(PathBuf, PathBuf), CompileError> {
     let program = compile_file(path)?;
     let abi = program_to_abi_json(&program)?;
-    let bin = program_to_runtime_bytecode(&program)?;
+    let bin = program_to_deploy_bytecode(&program)?;
 
     let stem = path
         .file_stem()

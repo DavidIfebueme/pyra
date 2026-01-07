@@ -3,6 +3,7 @@ use predicates::str::contains;
 use tempfile::NamedTempFile;
 use tempfile::TempDir;
 use std::io::Write;
+use pyra_compiler::evm::runtime_return_word;
 
 #[test]
 fn pyra_help_works() {
@@ -38,8 +39,18 @@ fn pyra_build_parses_valid_file() {
 
     let bin_path = out_dir.path().join(format!("{stem}.bin"));
     assert!(bin_path.exists());
-    let bin = std::fs::read_to_string(bin_path).unwrap();
-    assert!(!bin.trim().is_empty());
+    let bin_hex = std::fs::read_to_string(bin_path).unwrap();
+    let bin = hex::decode(bin_hex.trim()).unwrap();
+    assert!(!bin.is_empty());
+
+    let mut word = [0u8; 32];
+    word[31] = 1;
+    let runtime = runtime_return_word(word);
+    assert!(bin.ends_with(&runtime));
+    let runtime_start = bin.len() - runtime.len();
+    assert_eq!(bin[runtime_start], 0x7f);
+    assert_eq!(bin[runtime_start - 1], 0xf3);
+    assert!(bin[..runtime_start].contains(&0x39));
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::evm::runtime_return_word;
+use crate::evm::{init_return_runtime, runtime_return_word};
 use crate::{BinaryOp, Expression, Item, Program, Statement};
 use num_bigint::BigUint;
 
@@ -46,6 +46,11 @@ pub fn program_to_runtime_bytecode(program: &Program) -> Result<Vec<u8>, Codegen
 	};
 
 	Ok(runtime_return_word(biguint_to_word(&value)))
+}
+
+pub fn program_to_deploy_bytecode(program: &Program) -> Result<Vec<u8>, CodegenError> {
+	let runtime = program_to_runtime_bytecode(program)?;
+	Ok(init_return_runtime(&runtime))
 }
 
 fn eval_const_expr(expr: &Expression) -> Result<BigUint, CodegenError> {
@@ -104,6 +109,18 @@ mod tests {
 		assert!(!code.is_empty());
 		assert_eq!(code[0], 0x7f);
 		assert_eq!(code[40], 0xf3);
+	}
+
+	#[test]
+	fn generates_deploy_bytecode_with_runtime_suffix() {
+		let program = parse_from_source("def t() -> uint256: return 1").unwrap();
+		let runtime = program_to_runtime_bytecode(&program).unwrap();
+		let deploy = program_to_deploy_bytecode(&program).unwrap();
+		assert!(deploy.ends_with(&runtime));
+		let runtime_start = deploy.len() - runtime.len();
+		assert_eq!(deploy[runtime_start], 0x7f);
+		assert_eq!(deploy[runtime_start - 1], 0xf3);
+		assert!(deploy[..runtime_start].contains(&0x39));
 	}
 
 	#[test]

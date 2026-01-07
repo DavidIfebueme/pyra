@@ -9,6 +9,6 @@ pub mod parser;
 pub use ast::*;
 pub use abi::{program_to_abi_json, AbiError};
 pub use compiler::{compile_file, compile_file_to_abi, compile_file_to_abi_and_bin, CompileError};
-pub use codegen::{program_to_runtime_bytecode, CodegenError};
+pub use codegen::{program_to_deploy_bytecode, program_to_runtime_bytecode, CodegenError};
 pub use lexer::{PyraLexer, Token};
 pub use parser::{parse_from_source, parse_program};
