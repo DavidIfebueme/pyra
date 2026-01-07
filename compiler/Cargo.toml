@@ -15,13 +15,21 @@ logos = "0.13"
 thiserror = "1.0"
 num-bigint = "0.4"
 chumsky = "0.9"
+clap = { version = "4", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.5"
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.0"
 
 [[bin]]
 name = "test_lexer"
 path = "src/bin/test_lexer.rs"
+
+[[bin]]
+name = "pyra"
+path = "src/bin/pyra.rs"
 
 [[bench]]
 name = "lexer_bench"
