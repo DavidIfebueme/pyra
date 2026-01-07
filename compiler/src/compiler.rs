@@ -10,7 +10,7 @@ pub enum CompileError {
     #[error("{0}")]
     Io(#[from] std::io::Error),
 
-    #[error("parse failed")]
+    #[error("parse failed: {0:?}")]
     Parse(Vec<ParseError>),
 
     #[error("abi failed: {0}")]

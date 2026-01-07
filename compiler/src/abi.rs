@@ -52,7 +52,7 @@ pub fn program_to_abi_json(program: &Program) -> Result<String, AbiError> {
             out.push('{');
             out.push_str("\"name\":\"\"");
             out.push_str(",\"type\":\"");
-            out.push_str(&abi_type(ret)?);
+            out.push_str(&abi_output_type(ret)?);
             out.push('"');
             out.push('}');
         }
@@ -67,6 +67,7 @@ pub fn program_to_abi_json(program: &Program) -> Result<String, AbiError> {
 
 fn abi_type(ty: &Type) -> Result<String, AbiError> {
     match ty {
+        Type::Uint8 => Ok("uint8".to_string()),
         Type::Uint256 => Ok("uint256".to_string()),
         Type::Int256 => Ok("int256".to_string()),
         Type::Bool => Ok("bool".to_string()),
@@ -77,6 +78,13 @@ fn abi_type(ty: &Type) -> Result<String, AbiError> {
         Type::Vec(_) => Err(AbiError::UnsupportedType("Vec".to_string())),
         Type::Map(_, _) => Err(AbiError::UnsupportedType("Map".to_string())),
         Type::Generic(name, _) => Err(AbiError::UnsupportedType(name.clone())),
+    }
+}
+
+fn abi_output_type(ty: &Type) -> Result<String, AbiError> {
+    match ty {
+        Type::Custom(_) => Ok("bytes".to_string()),
+        _ => abi_type(ty),
     }
 }
 

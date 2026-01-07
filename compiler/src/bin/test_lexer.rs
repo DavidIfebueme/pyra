@@ -3,6 +3,17 @@ use pyra_compiler::lexer::{PyraLexer, Token};
 fn main() {
     println!("🔥 Pyra Lexer Interactive Test");
 
+    let mut args = std::env::args().skip(1);
+    if let Some(path) = args.next() {
+        let source = std::fs::read_to_string(&path).expect("read file");
+        let lexer = PyraLexer::new(&source);
+        let tokens: Vec<Token> = lexer.collect();
+        for (i, token) in tokens.iter().enumerate() {
+            println!("{i}: {token}");
+        }
+        return;
+    }
+
     let test_cases = [
         "def transfer(to: address, amount: uint256):",
         "let balance: uint256 = 1000",

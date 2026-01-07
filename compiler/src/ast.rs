@@ -37,6 +37,7 @@ pub struct Parameter {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
+    Uint8,
     Uint256,
     Int256,
     Bool,
@@ -86,6 +87,8 @@ pub enum Expression {
     String(String),
     Bool(bool),
     Bytes(Vec<u8>),
+
+    StructInit(String, Vec<(String, Expression)>),
 
     Identifier(String),
 

@@ -36,6 +36,8 @@ pub enum Token {
 
     #[token("uint256")]
     Uint256,
+    #[token("uint8")]
+    Uint8,
     #[token("int256")]
     Int256,
     #[token("bool")]
@@ -252,12 +254,14 @@ impl<'a> PyraLexer<'a> {
                     self.at_line_start = true;
                     Some(Token::Newline)
                 }
+                Token::WhitespaceOnlyLine => {
+                    self.at_line_start = true;
+                    Some(Token::Newline)
+                }
                 _ => {
                     if self.at_line_start {
-                        if self.has_indentation() {
-                            if let Some(error_token) = self.handle_indentation() {
-                                return Some(error_token);
-                            }
+                        if let Some(error_token) = self.handle_indentation() {
+                            return Some(error_token);
                         }
                         self.at_line_start = false;
 
@@ -291,25 +295,6 @@ impl<'a> PyraLexer<'a> {
         }
     }
 
-    fn has_indentation(&self) -> bool {
-        let _remaining = self.inner.remainder();
-        let current_pos = self.inner.span().start;
-
-        let source = self.inner.source();
-
-        let mut line_start = current_pos;
-        while line_start > 0 {
-            let prev_char = source.chars().nth(line_start - 1);
-            if let Some('\n') = prev_char {
-                break;
-            }
-            line_start -= 1;
-        }
-
-        let line_content = &source[line_start..current_pos];
-        line_content.chars().any(|c| c == ' ' || c == '\t')
-    }
-
     fn handle_indentation(&mut self) -> Option<Token> {
         let source = self.inner.source();
         let current_pos = self.inner.span().start;
@@ -324,37 +309,42 @@ impl<'a> PyraLexer<'a> {
 
         let line_prefix = &source[line_start..current_pos];
 
-        let has_spaces = line_prefix.contains(' ');
-        let has_tabs = line_prefix.contains('\t');
+        let mut indent = 0;
+        let mut has_spaces = false;
+        let mut has_tabs = false;
+        for byte in line_prefix.bytes() {
+            match byte {
+                b' ' => {
+                    has_spaces = true;
+                    indent += 1;
+                }
+                b'\t' => {
+                    has_tabs = true;
+                    indent += 8;
+                }
+                _ => break,
+            }
+        }
 
         if has_spaces && has_tabs {
             return Some(Token::MixedIndentationError);
         }
 
-        let current_indent_type = if has_tabs {
-            IndentType::Tabs
-        } else if has_spaces {
-            IndentType::Spaces
-        } else {
-            return None;
-        };
+        if indent > 0 {
+            let current_indent_type = if has_tabs {
+                IndentType::Tabs
+            } else {
+                IndentType::Spaces
+            };
 
-        match &self.indent_type {
-            None => {
-                self.indent_type = Some(current_indent_type);
-            }
-            Some(prev_type) if *prev_type != current_indent_type => {
-                return Some(Token::MixedIndentationError);
-            }
-            _ => {}
-        }
-
-        let mut indent = 0;
-        for byte in line_prefix.bytes() {
-            match byte {
-                b' ' => indent += 1,
-                b'\t' => indent += 8,
-                _ => break,
+            match &self.indent_type {
+                None => {
+                    self.indent_type = Some(current_indent_type);
+                }
+                Some(prev_type) if *prev_type != current_indent_type => {
+                    return Some(Token::MixedIndentationError);
+                }
+                _ => {}
             }
         }
 

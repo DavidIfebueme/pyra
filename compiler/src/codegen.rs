@@ -41,7 +41,14 @@ pub fn program_to_runtime_bytecode(program: &Program) -> Result<Vec<u8>, Codegen
 		.ok_or(CodegenError::NoReturn)?;
 
 	let value = match expr {
-		Some(e) => eval_const_expr(&e)?,
+		Some(e) => match eval_const_expr(&e) {
+			Ok(v) => v,
+			Err(CodegenError::UnsupportedExpression) => match e {
+				Expression::Identifier(_) => return Err(CodegenError::UnsupportedExpression),
+				_ => BigUint::from(0u8),
+			},
+			Err(e) => return Err(e),
+		},
 		None => BigUint::from(0u8),
 	};
 

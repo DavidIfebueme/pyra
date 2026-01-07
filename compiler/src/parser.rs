@@ -4,6 +4,50 @@ use chumsky::prelude::*;
 
 pub type ParseError = Simple<Token>;
 
+#[derive(Clone)]
+enum PostfixOp {
+    Member(String),
+    Index(Expression),
+    Call(Vec<Expression>),
+}
+
+#[derive(Clone)]
+enum TargetOp {
+    Member(String),
+    Index(Expression),
+}
+
+fn fold_postfix(lhs: Expression, op: PostfixOp) -> Expression {
+    match op {
+        PostfixOp::Member(name) => Expression::Member(Box::new(lhs), name),
+        PostfixOp::Index(idx) => Expression::Index(Box::new(lhs), Box::new(idx)),
+        PostfixOp::Call(args) => Expression::Call(Box::new(lhs), args),
+    }
+}
+
+fn fold_unary(op: UnaryOp, rhs: Expression) -> Expression {
+    Expression::Unary(op, Box::new(rhs))
+}
+
+fn fold_binary(left: Expression, (op, right): (BinaryOp, Expression)) -> Expression {
+    Expression::Binary(op, Box::new(left), Box::new(right))
+}
+
+fn fold_target(lhs: Expression, op: TargetOp) -> Expression {
+    match op {
+        TargetOp::Member(name) => Expression::Member(Box::new(lhs), name),
+        TargetOp::Index(idx) => Expression::Index(Box::new(lhs), Box::new(idx)),
+    }
+}
+
+fn fold_field_init((name, value): (String, Expression)) -> (String, Expression) {
+    (name, value)
+}
+
+fn fold_struct_init((name, fields): (String, Vec<(String, Expression)>)) -> Expression {
+    Expression::StructInit(name, fields)
+}
+
 pub fn parse_program(tokens: Vec<Token>) -> Result<Program, Vec<ParseError>> {
     program_parser().parse(tokens)
 }
@@ -21,8 +65,14 @@ pub fn parse_from_source(source: &str) -> Result<Program, Vec<ParseError>> {
 
 fn program_parser() -> impl Parser<Token, Program, Error = ParseError> {
     nl()
-        .ignore_then(function_parser().map(Item::Function))
-        .then_ignore(nl())
+        .ignore_then(
+            choice((
+                function_parser().map(Item::Function),
+                struct_parser().map(Item::Struct),
+                const_item_parser().map(Item::Const),
+            ))
+            .then_ignore(nl()),
+        )
         .repeated()
         .map(|items| Program {
             items,
@@ -80,6 +130,7 @@ fn return_type() -> impl Parser<Token, Type, Error = ParseError> {
 
 fn type_parser() -> impl Parser<Token, Type, Error = ParseError> {
     choice((
+        just(Token::Uint8).to(Type::Uint8),
         just(Token::Uint256).to(Type::Uint256),
         just(Token::Int256).to(Type::Int256),
         just(Token::Bool).to(Type::Bool),
@@ -90,44 +141,167 @@ fn type_parser() -> impl Parser<Token, Type, Error = ParseError> {
     ))
 }
 
+fn struct_parser() -> impl Parser<Token, StructDef, Error = ParseError> {
+    let sep = choice((just(Token::Comma).ignore_then(nl()).ignored(), nl1()));
+    just(Token::Struct)
+        .ignore_then(identifier())
+        .then_ignore(nl())
+        .then_ignore(just(Token::LBrace))
+        .then_ignore(nl())
+        .then_ignore(just(Token::Indent).or_not())
+        .then_ignore(nl())
+        .then(struct_field().separated_by(sep).allow_leading().allow_trailing())
+        .then_ignore(nl())
+        .then_ignore(just(Token::Dedent).or_not())
+        .then_ignore(nl())
+        .then_ignore(just(Token::RBrace))
+        .map(|(name, fields)| StructDef {
+            name,
+            fields,
+            span: Span { start: 0, end: 0 },
+        })
+}
+
+fn struct_field() -> impl Parser<Token, StructField, Error = ParseError> {
+    identifier()
+        .then_ignore(just(Token::Colon))
+        .then(type_parser())
+        .map(|(name, type_)| StructField {
+            name,
+            type_,
+            span: Span { start: 0, end: 0 },
+        })
+}
+
+fn const_item_parser() -> impl Parser<Token, ConstDecl, Error = ParseError> {
+    just(Token::Let)
+        .ignore_then(identifier())
+        .then(just(Token::Colon).ignore_then(type_parser()).or_not())
+        .then_ignore(just(Token::Assign))
+        .then(expression_parser())
+        .map(|((name, type_), value)| ConstDecl {
+            name,
+            type_: type_.unwrap_or(Type::Uint256),
+            value,
+            span: Span { start: 0, end: 0 },
+        })
+}
+
 fn expression_parser() -> impl Parser<Token, Expression, Error = ParseError> {
     recursive(|expr| {
-        let atom1 = choice((
+        let field_init = identifier()
+            .then_ignore(just(Token::Colon))
+            .then(expr.clone())
+            .map(fold_field_init as fn((String, Expression)) -> (String, Expression));
+
+        let sep = choice((just(Token::Comma).ignore_then(nl()).ignored(), nl1()));
+
+        let struct_init = identifier()
+            .then(
+                just(Token::LBrace)
+                    .ignore_then(nl())
+                    .ignore_then(just(Token::Indent).or_not())
+                    .ignore_then(nl())
+                    .ignore_then(field_init.separated_by(sep).allow_leading().allow_trailing())
+                    .then_ignore(nl())
+                    .then_ignore(just(Token::Dedent).or_not())
+                    .then_ignore(nl())
+                    .then_ignore(just(Token::RBrace)),
+            )
+            .map(fold_struct_init as fn((String, Vec<(String, Expression)>)) -> Expression);
+
+        let atom = choice((
             select! { Token::Number(n) => Expression::Number(n) },
             select! { Token::HexNumber(n) => Expression::HexNumber(n) },
             select! { Token::StringLiteral(s) => Expression::String(s) },
             select! { Token::BytesLiteral(b) => Expression::Bytes(b) },
             just(Token::True).to(Expression::Bool(true)),
             just(Token::False).to(Expression::Bool(false)),
+            struct_init,
             identifier().map(Expression::Identifier),
-            expr.clone()
-                .delimited_by(just(Token::LParen), just(Token::RParen)),
+            expr.clone().delimited_by(just(Token::LParen), just(Token::RParen)),
         ));
 
-        let atom2 = choice((
-            select! { Token::Number(n) => Expression::Number(n) },
-            select! { Token::HexNumber(n) => Expression::HexNumber(n) },
-            select! { Token::StringLiteral(s) => Expression::String(s) },
-            select! { Token::BytesLiteral(b) => Expression::Bytes(b) },
-            just(Token::True).to(Expression::Bool(true)),
-            just(Token::False).to(Expression::Bool(false)),
-            identifier().map(Expression::Identifier),
-            expr.delimited_by(just(Token::LParen), just(Token::RParen)),
-        ));
+        let postfix_ops = choice((
+            just(Token::Dot)
+                .ignore_then(identifier())
+                .map(PostfixOp::Member),
+            just(Token::LBracket)
+                .ignore_then(expr.clone())
+                .then_ignore(just(Token::RBracket))
+                .map(PostfixOp::Index),
+            just(Token::LParen)
+                .ignore_then(expr.clone().separated_by(just(Token::Comma)).allow_trailing())
+                .then_ignore(just(Token::RParen))
+                .map(PostfixOp::Call),
+        ))
+        .repeated();
 
-        atom1
+        let postfix = atom
+            .then(postfix_ops)
+            .foldl(fold_postfix as fn(Expression, PostfixOp) -> Expression)
+            .boxed();
+
+        let unary = choice((
+            just(Token::Not).to(UnaryOp::Not),
+            just(Token::Minus).to(UnaryOp::Minus),
+        ))
+        .repeated()
+        .then(postfix)
+        .foldr(fold_unary as fn(UnaryOp, Expression) -> Expression)
+        .boxed();
+
+        let product = unary
+            .clone()
             .then(
                 choice((
-                    just(Token::Plus).to(BinaryOp::Add),
-                    just(Token::Minus).to(BinaryOp::Sub),
                     just(Token::Multiply).to(BinaryOp::Mul),
                     just(Token::Divide).to(BinaryOp::Div),
                     just(Token::Modulo).to(BinaryOp::Mod),
                 ))
-                .then(atom2)
+                .then(unary.clone())
                 .repeated(),
             )
-            .foldl(|left, (op, right)| Expression::Binary(op, Box::new(left), Box::new(right)))
+            .foldl(fold_binary as fn(Expression, (BinaryOp, Expression)) -> Expression)
+            .boxed();
+
+        let sum = product
+            .clone()
+            .then(
+                choice((just(Token::Plus).to(BinaryOp::Add), just(Token::Minus).to(BinaryOp::Sub)))
+                    .then(product)
+                    .repeated(),
+            )
+            .foldl(fold_binary as fn(Expression, (BinaryOp, Expression)) -> Expression)
+            .boxed();
+
+        let cmp = sum
+            .clone()
+            .then(
+                choice((
+                    just(Token::Equal).to(BinaryOp::Equal),
+                    just(Token::NotEqual).to(BinaryOp::NotEqual),
+                    just(Token::LessEqual).to(BinaryOp::LessEqual),
+                    just(Token::GreaterEqual).to(BinaryOp::GreaterEqual),
+                    just(Token::Less).to(BinaryOp::Less),
+                    just(Token::Greater).to(BinaryOp::Greater),
+                ))
+                .then(sum)
+                .repeated(),
+            )
+            .foldl(fold_binary as fn(Expression, (BinaryOp, Expression)) -> Expression)
+            .boxed();
+
+        let and_expr = cmp
+            .clone()
+            .then(just(Token::And).to(BinaryOp::And).then(cmp).repeated())
+            .foldl(fold_binary as fn(Expression, (BinaryOp, Expression)) -> Expression)
+            .boxed();
+
+        and_expr
+            .clone()
+            .then(just(Token::Or).to(BinaryOp::Or).then(and_expr).repeated())
+            .foldl(fold_binary as fn(Expression, (BinaryOp, Expression)) -> Expression)
     })
 }
 
@@ -165,7 +339,7 @@ fn let_statement() -> impl Parser<Token, Statement, Error = ParseError> {
 }
 
 fn assign_statement() -> impl Parser<Token, Statement, Error = ParseError> {
-    let target = identifier().map(Expression::Identifier);
+    let target = assignment_target_parser();
 
     let op = choice((
         just(Token::Assign).to(None),
@@ -190,6 +364,22 @@ fn assign_statement() -> impl Parser<Token, Statement, Error = ParseError> {
                 span: Span { start: 0, end: 0 },
             })
         })
+}
+
+fn assignment_target_parser() -> impl Parser<Token, Expression, Error = ParseError> {
+    let base = identifier().map(Expression::Identifier).boxed();
+    let ops = choice((
+        just(Token::Dot)
+            .ignore_then(identifier())
+            .map(TargetOp::Member),
+        just(Token::LBracket)
+            .ignore_then(expression_parser())
+            .then_ignore(just(Token::RBracket))
+            .map(TargetOp::Index),
+    ))
+    .repeated();
+
+    base.then(ops).foldl(fold_target as fn(Expression, TargetOp) -> Expression)
 }
 
 fn statement_parser() -> BoxedParser<'static, Token, Statement, ParseError> {

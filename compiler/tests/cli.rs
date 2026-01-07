@@ -91,3 +91,19 @@ fn pyra_build_parses_multiline_require() {
     assert!(out_dir.path().join(format!("{stem}.abi")).exists());
     assert!(out_dir.path().join(format!("{stem}.bin")).exists());
 }
+
+#[test]
+fn pyra_build_erc20_contract() {
+    let out_dir = TempDir::new().unwrap();
+
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("pyra"));
+    cmd.arg("build")
+        .arg("../contracts/ERC20.pyra")
+        .arg("--out-dir")
+        .arg(out_dir.path())
+        .assert()
+        .success();
+
+    assert!(out_dir.path().join("ERC20.abi").exists());
+    assert!(out_dir.path().join("ERC20.bin").exists());
+}
