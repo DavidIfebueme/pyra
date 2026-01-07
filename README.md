@@ -210,31 +210,25 @@ pyra/
 - Built-in DeFi primitives (AMM, lending, governance)
 - IDE integration (VS Code, Neovim)
 
-## Quick start (once the CLI is ready)
+## Quick start
 
 ```bash
-# Install the Pyra compiler
-cargo install pyra-compiler
+# Install from GitHub (recommended for testers)
+cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
 
-# Compile a contract
-pyra build contracts/MyToken.pyra
-
-# Outputs:
-# - MyToken.bin (optimized EVM bytecode)
-# - MyToken.abi (interface)
-# - MyToken.gas (gas analysis)
-# - MyToken.proof (verification results)
+# Compile example contracts
+pyra build contracts/ERC20.pyra
+pyra build contracts/Vault.pyra
 ```
 
-## Performance benchmarks vs Vyper
+Outputs:
 
-| Metric | Pyra | Vyper |
-|--------|------|-------|
-| Compilation Speed | **10x faster** | Baseline |
-| Gas Efficiency | **15% less gas** | Baseline |
-| Binary Size | **20% smaller** | Baseline |
-| Type Checking | **Real-time** | Slow |
-| Formal Verification | **Built-in** | External tools |
+- `<Contract>.abi`
+- `<Contract>.bin`
+
+## Performance
+
+The compiler includes Criterion benchmarks under `compiler/benches/` to track lexer/parse/codegen performance.
 
 ## Author
 

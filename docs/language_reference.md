@@ -1,6 +1,8 @@
 # Language Reference
 
-This document provides a comprehensive reference for the Pyra programming language.
+This document describes the Pyra language as implemented by the current compiler.
+
+Sections marked “Planned” are not implemented yet.
 
 ## Types
 
@@ -10,20 +12,23 @@ This document provides a comprehensive reference for the Pyra programming langua
 - `bool`: Boolean (true/false)
 - `address`: Ethereum address
 - `bytes`: Byte array
+- `string`: String
 
 ### Complex Types
 - `struct`: Custom data structures
-- `Vec<T>`: Dynamic arrays (compile-time optimized)
-- `Map<K,V>`: Key-value mappings (compile-time optimized)
+- `Vec<T>`: Planned
+- `Map<K,V>`: Planned
 
 ## Syntax
 
 ### Variable Declaration
 ```pyra
 let variable_name: type = value
-mut variable_name: type = value  # mutable
-const CONSTANT_NAME: type = value  # compile-time constant
+let mut variable_name: type = value
+const CONSTANT_NAME: type = value
 ```
+
+Note: at top-level, `let NAME: type = value` is also accepted as a constant declaration for now (used by existing examples).
 
 ### Function Definition
 ```pyra
@@ -40,10 +45,11 @@ elif other_condition:
     # code block
 else:
     # code block
-
-while condition:
-    # loop body
 ```
+
+Planned:
+
+- `while`
 
 ### Struct Definition
 ```pyra
@@ -58,7 +64,9 @@ struct StructName {
 struct Container<T> {
     value: T
 }
-
-def generic_function<T: Constraint>(param: T) -> T:
-    return param
 ```
+
+Planned:
+
+- Generic functions
+- Generic type constraints

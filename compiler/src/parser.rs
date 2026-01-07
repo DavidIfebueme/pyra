@@ -186,7 +186,7 @@ fn struct_field() -> impl Parser<Token, StructField, Error = ParseError> {
 }
 
 fn const_item_parser() -> impl Parser<Token, ConstDecl, Error = ParseError> {
-    just(Token::Let)
+    choice((just(Token::Const), just(Token::Let)))
         .ignore_then(identifier())
         .then(just(Token::Colon).ignore_then(type_parser()).or_not())
         .then_ignore(just(Token::Assign))
@@ -533,5 +533,13 @@ mod tests {
         let Item::Function(f) = &program.items[0] else { panic!() };
         assert_eq!(f.body.statements.len(), 3);
         assert!(matches!(f.body.statements[1], Statement::Assign(_)));
+    }
+
+    #[test]
+    fn parses_const_item() {
+        let source = "const total_supply: uint256 = 100\n\ndef t() -> uint256: return total_supply\n";
+        let program = parse_from_source(source).unwrap();
+        assert_eq!(program.items.len(), 2);
+        assert!(matches!(program.items[0], Item::Const(_)));
     }
 }
