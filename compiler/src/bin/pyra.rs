@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+use pyra_compiler::compile_file;
+
 #[derive(Parser)]
 #[command(name = "pyra", version, about = "Pyra compiler")]
 struct Cli {
@@ -21,11 +23,12 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::Build {
-            input: _,
-            out_dir: _,
-        } => {
-            std::process::exit(0);
-        }
+        Command::Build { input, out_dir: _ } => match compile_file(&input) {
+            Ok(_) => std::process::exit(0),
+            Err(err) => {
+                eprintln!("{err}");
+                std::process::exit(1)
+            }
+        },
     }
 }
