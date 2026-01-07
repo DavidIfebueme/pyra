@@ -2,12 +2,12 @@
 
 This repo ships the `pyra` CLI as the `pyra-compiler` Cargo package.
 
-## Option A: Install from GitHub (recommended for testers)
+## Option A: Install from crates.io (recommended)
 
 Requires: Rust toolchain installed.
 
 ```bash
-cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
+cargo install --locked pyra-compiler
 ```
 
 Verify:
@@ -18,7 +18,13 @@ pyra build contracts/ERC20.pyra
 pyra build contracts/Vault.pyra
 ```
 
-## Option B: Install from a local checkout (contributors)
+## Option B: Install from GitHub (if crates.io publish isn't done yet)
+
+```bash
+cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
+```
+
+## Option C: Install from a local checkout (contributors)
 
 From the repo root:
 

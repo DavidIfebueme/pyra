@@ -213,8 +213,11 @@ pyra/
 ## Quick start
 
 ```bash
-# Install from GitHub (recommended for testers)
-cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
+# Install (crates.io)
+cargo install --locked pyra-compiler
+
+# If crates.io publish isn't done yet
+# cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
 
 # Compile example contracts
 pyra build contracts/ERC20.pyra
