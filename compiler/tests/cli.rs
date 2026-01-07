@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use predicates::str::contains;
 use tempfile::NamedTempFile;
+use tempfile::TempDir;
 use std::io::Write;
 
 #[test]
@@ -21,8 +22,19 @@ fn pyra_build_parses_valid_file() {
     write!(file, "def t() -> bool: return true").unwrap();
     let path = file.path().to_path_buf();
 
+    let out_dir = TempDir::new().unwrap();
+
     let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("pyra"));
-    cmd.arg("build").arg(path).assert().success();
+    cmd.arg("build")
+        .arg(&path)
+        .arg("--out-dir")
+        .arg(out_dir.path())
+        .assert()
+        .success();
+
+    let stem = path.file_stem().unwrap().to_str().unwrap();
+    let abi_path = out_dir.path().join(format!("{stem}.abi"));
+    assert!(abi_path.exists());
 }
 
 #[test]
