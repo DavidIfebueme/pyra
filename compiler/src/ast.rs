@@ -1,4 +1,3 @@
-
 use num_bigint::BigUint;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,7 +35,6 @@ pub struct Parameter {
     pub span: Span,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Uint256,
@@ -45,10 +43,10 @@ pub enum Type {
     Address,
     Bytes,
     String,
-    
+
     Vec(Box<Type>),
     Map(Box<Type>, Box<Type>),
-    
+
     Custom(String),
 
     Generic(String, Vec<Type>),
@@ -88,30 +86,41 @@ pub enum Expression {
     String(String),
     Bool(bool),
     Bytes(Vec<u8>),
-    
+
     Identifier(String),
-    
+
     Binary(BinaryOp, Box<Expression>, Box<Expression>),
     Unary(UnaryOp, Box<Expression>),
-    
+
     Call(Box<Expression>, Vec<Expression>),
-    
+
     Member(Box<Expression>, String),
     Index(Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOp {
-    Add, Sub, Mul, Div, Mod, Pow,
-    Equal, NotEqual, Less, Greater, LessEqual, GreaterEqual,
-    And, Or,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Pow,
+    Equal,
+    NotEqual,
+    Less,
+    Greater,
+    LessEqual,
+    GreaterEqual,
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOp {
-    Not, Minus,
+    Not,
+    Minus,
 }
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructDef {

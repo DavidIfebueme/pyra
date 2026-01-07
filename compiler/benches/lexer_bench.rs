@@ -2,7 +2,6 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pyra_compiler::lexer::PyraLexer;
 
 fn lexer_benchmark(c: &mut Criterion) {
-
     let large_contract = r#"
 contract ComplexERC20Token:
     # Storage with massive numbers and addresses
@@ -169,15 +168,15 @@ contract TokenFactory:
     def deploy_token(name: string, symbol: string, supply: uint256) -> address:
         # More complex operations...
         return create_forwarder_to(self)
-"#.repeat(50);  
+"#.repeat(50);
 
     c.bench_function("lexer_comprehensive_stress_test", |b| {
         b.iter(|| {
-            let mut lexer = PyraLexer::new(black_box(&large_contract));
+            let lexer = PyraLexer::new(black_box(&large_contract));
             let _tokens: Vec<_> = lexer.collect();
         })
     });
-    
+
     let error_test_contract = r#"
         def error_prone_function():
             # Mix of valid and edge-case tokens that stress error detection
@@ -188,11 +187,12 @@ contract TokenFactory:
                     nested_operation()  # Mixed indentation styles
                     another_operation()  # Tab vs spaces
                 final_operation()
-    "#.repeat(200);
-    
+    "#
+    .repeat(200);
+
     c.bench_function("lexer_error_handling_stress", |b| {
         b.iter(|| {
-            let mut lexer = PyraLexer::new(black_box(&error_test_contract));
+            let lexer = PyraLexer::new(black_box(&error_test_contract));
             let _tokens: Vec<_> = lexer.collect();
         })
     });
