@@ -7,7 +7,7 @@ This repo ships the `pyra` CLI as the `pyra-compiler` Cargo package.
 Requires: Rust toolchain installed.
 
 ```bash
-cargo install --git https://github.com/DavidIfebueme/pyra --package pyra-compiler
+cargo install --locked --git https://github.com/DavidIfebueme/pyra pyra-compiler
 ```
 
 Verify:
@@ -23,7 +23,7 @@ pyra build contracts/Vault.pyra
 From the repo root:
 
 ```bash
-cargo install --path compiler
+cargo install --locked --path compiler
 ```
 
 Verify:
