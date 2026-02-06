@@ -7,6 +7,7 @@ pub mod gas;
 pub mod ir;
 pub mod lexer;
 pub mod parser;
+pub mod security;
 pub mod storage;
 pub mod typer;
 
@@ -18,5 +19,6 @@ pub use gas::{GasReport, FunctionGas};
 pub use ir::{lower_program, IrModule, IrFunction, IrOp};
 pub use lexer::{PyraLexer, Token};
 pub use parser::{parse_from_source, parse_program};
+pub use security::harden;
 pub use storage::{StorageLayout, StorageSlot, StorageKind};
 pub use typer::{check_program, TypeError};

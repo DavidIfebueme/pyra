@@ -1,4 +1,5 @@
 use crate::ir::{lower_program, IrModule, IrOp};
+use crate::security::harden;
 use crate::Program;
 use std::collections::HashMap;
 
@@ -125,12 +126,14 @@ impl Emitter {
 }
 
 pub fn program_to_runtime_bytecode(program: &Program) -> Result<Vec<u8>, CodegenError> {
-    let module = lower_program(program);
+    let mut module = lower_program(program);
+    harden(&mut module);
     module_to_runtime(&module)
 }
 
 pub fn program_to_deploy_bytecode(program: &Program) -> Result<Vec<u8>, CodegenError> {
-    let module = lower_program(program);
+    let mut module = lower_program(program);
+    harden(&mut module);
 
     let mut ctor_em = Emitter::new();
     for op in &module.constructor_ops {
