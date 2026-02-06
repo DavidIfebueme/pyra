@@ -19,6 +19,6 @@ pub use gas::{GasReport, FunctionGas};
 pub use ir::{lower_program, IrModule, IrFunction, IrOp};
 pub use lexer::{PyraLexer, Token};
 pub use parser::{parse_from_source, parse_program};
-pub use security::harden;
+pub use security::{harden, add_reentrancy_guard};
 pub use storage::{StorageLayout, StorageSlot, StorageKind};
 pub use typer::{check_program, TypeError};

@@ -1,5 +1,6 @@
 use crate::ir::{lower_program, IrModule, IrOp};
-use crate::security::harden;
+use crate::security::{harden, add_reentrancy_guard};
+use crate::storage::StorageLayout;
 use crate::Program;
 use std::collections::HashMap;
 
@@ -128,12 +129,16 @@ impl Emitter {
 pub fn program_to_runtime_bytecode(program: &Program) -> Result<Vec<u8>, CodegenError> {
     let mut module = lower_program(program);
     harden(&mut module);
+    let layout = StorageLayout::from_program(program);
+    add_reentrancy_guard(&mut module, layout.slot_count());
     module_to_runtime(&module)
 }
 
 pub fn program_to_deploy_bytecode(program: &Program) -> Result<Vec<u8>, CodegenError> {
     let mut module = lower_program(program);
     harden(&mut module);
+    let layout = StorageLayout::from_program(program);
+    add_reentrancy_guard(&mut module, layout.slot_count());
 
     let mut ctor_em = Emitter::new();
     for op in &module.constructor_ops {
