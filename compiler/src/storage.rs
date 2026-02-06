@@ -37,6 +37,18 @@ impl StorageLayout {
         }
 
         for item in &program.items {
+            if let Item::Struct(s) = item {
+                for field in &s.fields {
+                    let kind = match &field.type_ {
+                        Type::Map(_, _) => StorageKind::Mapping,
+                        _ => StorageKind::Value,
+                    };
+                    layout.alloc(&field.name, kind);
+                }
+            }
+        }
+
+        for item in &program.items {
             if let Item::Function(f) = item {
                 let mut locals: Vec<&str> = f.params.iter().map(|p| p.name.as_str()).collect();
                 discover_state(&f.body.statements, &mut locals, &mut layout);
@@ -58,6 +70,10 @@ impl StorageLayout {
 
     pub fn get(&self, name: &str) -> Option<&StorageSlot> {
         self.slots.get(name)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &StorageSlot)> {
+        self.slots.iter()
     }
 
     pub fn slot_count(&self) -> u64 {

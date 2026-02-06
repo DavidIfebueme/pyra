@@ -7,6 +7,7 @@ pub mod ir;
 pub mod lexer;
 pub mod parser;
 pub mod storage;
+pub mod typer;
 
 pub use ast::*;
 pub use abi::{program_to_abi_json, AbiError};
@@ -16,3 +17,4 @@ pub use ir::{lower_program, IrModule, IrFunction, IrOp};
 pub use lexer::{PyraLexer, Token};
 pub use parser::{parse_from_source, parse_program};
 pub use storage::{StorageLayout, StorageSlot, StorageKind};
+pub use typer::{check_program, TypeError};

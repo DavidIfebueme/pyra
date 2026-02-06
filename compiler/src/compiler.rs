@@ -1,4 +1,5 @@
 use crate::parser::{parse_from_source, ParseError};
+use crate::typer::{check_program, TypeError};
 use crate::{program_to_abi_json, AbiError};
 use crate::{program_to_deploy_bytecode, CodegenError};
 use crate::Program;
@@ -13,6 +14,9 @@ pub enum CompileError {
     #[error("parse failed: {0:?}")]
     Parse(Vec<ParseError>),
 
+    #[error("type errors: {0:?}")]
+    Type(Vec<TypeError>),
+
     #[error("abi failed: {0}")]
     Abi(#[from] AbiError),
 
@@ -22,7 +26,12 @@ pub enum CompileError {
 
 pub fn compile_file(path: &Path) -> Result<Program, CompileError> {
     let source = std::fs::read_to_string(path)?;
-    parse_from_source(&source).map_err(CompileError::Parse)
+    let program = parse_from_source(&source).map_err(CompileError::Parse)?;
+    let errors = check_program(&program);
+    if !errors.is_empty() {
+        return Err(CompileError::Type(errors));
+    }
+    Ok(program)
 }
 
 pub fn compile_file_to_abi(path: &Path, out_dir: Option<&Path>) -> Result<PathBuf, CompileError> {
