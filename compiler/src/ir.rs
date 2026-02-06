@@ -60,6 +60,7 @@ struct LowerCtx {
     layout: StorageLayout,
     params: HashMap<String, usize>,
     locals: HashMap<String, usize>,
+    events: HashMap<String, Vec<crate::Type>>,
     next_mem: usize,
     label_count: usize,
 }
@@ -70,6 +71,7 @@ impl LowerCtx {
             layout,
             params: HashMap::with_capacity(8),
             locals: HashMap::with_capacity(8),
+            events: HashMap::new(),
             next_mem: 0x80,
             label_count: 0,
         }
@@ -100,6 +102,15 @@ pub fn lower_program(program: &Program) -> IrModule {
     let mut ctx = LowerCtx::new(layout);
     let mut functions = Vec::new();
     let mut constructor_ops = Vec::new();
+
+    for item in &program.items {
+        if let Item::Event(ev) = item {
+            ctx.events.insert(
+                ev.name.clone(),
+                ev.fields.iter().map(|f| f.type_.clone()).collect(),
+            );
+        }
+    }
 
     for item in &program.items {
         if let Item::Const(c) = item {
@@ -287,15 +298,36 @@ fn lower_while(ctx: &mut LowerCtx, while_stmt: &crate::WhileStatement, ops: &mut
 }
 
 fn lower_emit(ctx: &mut LowerCtx, em: &crate::EmitStatement, ops: &mut Vec<IrOp>) {
-    if let Some(first_arg) = em.args.first() {
-        lower_expression_into(ctx, first_arg, ops);
-        ops.push(IrOp::Push(vec![0x00]));
+    let mem_start = ctx.next_mem;
+    for (i, arg) in em.args.iter().enumerate() {
+        lower_expression_into(ctx, arg, ops);
+        ops.push(IrOp::Push(u64_to_bytes((mem_start + i * 32) as u64)));
         ops.push(IrOp::MStore);
     }
-    let data_size = if em.args.is_empty() { 0u8 } else { 0x20 };
-    ops.push(IrOp::Push(vec![data_size]));
-    ops.push(IrOp::Push(vec![0x00]));
-    ops.push(IrOp::Log(0));
+    let data_size = em.args.len() * 32;
+    ops.push(IrOp::Push(u64_to_bytes(data_size as u64)));
+    ops.push(IrOp::Push(u64_to_bytes(mem_start as u64)));
+
+    let sig = build_event_signature(&em.name, ctx.events.get(&em.name));
+    let topic = keccak256_bytes(sig.as_bytes());
+    ops.push(IrOp::Push(topic.to_vec()));
+    ops.push(IrOp::Log(1));
+}
+
+fn build_event_signature(name: &str, types: Option<&Vec<crate::Type>>) -> String {
+    let params = match types {
+        Some(ts) => ts.iter().map(|t| type_to_abi_string(t)).collect::<Vec<_>>().join(","),
+        None => String::new(),
+    };
+    format!("{name}({params})")
+}
+
+fn keccak256_bytes(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Keccak::v256();
+    hasher.update(data);
+    let mut out = [0u8; 32];
+    hasher.finalize(&mut out);
+    out
 }
 
 fn lower_expression_into(ctx: &mut LowerCtx, expr: &Expression, ops: &mut Vec<IrOp>) {
@@ -591,5 +623,41 @@ mod tests {
             .count();
         assert!(jumpi_count >= 1);
         assert!(jumpdest_count >= 2);
+    }
+
+    #[test]
+    fn lower_emit_produces_log1() {
+        let src = "event Transfer(from: address, to: address, amount: uint256)\n\ndef t():\n    emit Transfer(msg.sender, msg.sender, 100)\n";
+        let program = parse_from_source(src).unwrap();
+        let module = lower_program(&program);
+        let ops = &module.functions[0].ops;
+        let has_log1 = ops.iter().any(|op| matches!(op, IrOp::Log(1)));
+        assert!(has_log1);
+    }
+
+    #[test]
+    fn lower_emit_has_topic_hash() {
+        let src = "event Transfer(from: address, to: address, amount: uint256)\n\ndef t():\n    emit Transfer(msg.sender, msg.sender, 100)\n";
+        let program = parse_from_source(src).unwrap();
+        let module = lower_program(&program);
+        let ops = &module.functions[0].ops;
+        let has_32byte_push = ops.iter().any(|op| {
+            if let IrOp::Push(data) = op {
+                data.len() == 32
+            } else {
+                false
+            }
+        });
+        assert!(has_32byte_push);
+    }
+
+    #[test]
+    fn lower_emit_no_event_def_still_works() {
+        let src = "def t():\n    emit Foo(42)\n";
+        let program = parse_from_source(src).unwrap();
+        let module = lower_program(&program);
+        let ops = &module.functions[0].ops;
+        let has_log = ops.iter().any(|op| matches!(op, IrOp::Log(1)));
+        assert!(has_log);
     }
 }
