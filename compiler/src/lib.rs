@@ -10,6 +10,7 @@ pub mod parser;
 pub mod security;
 pub mod storage;
 pub mod typer;
+pub mod verifier;
 
 pub use ast::*;
 pub use abi::{program_to_abi_json, AbiError};
@@ -22,3 +23,4 @@ pub use parser::{parse_from_source, parse_program};
 pub use security::{harden, add_reentrancy_guard};
 pub use storage::{StorageLayout, StorageSlot, StorageKind};
 pub use typer::{check_program, TypeError};
+pub use verifier::{verify_module, VerifyError};

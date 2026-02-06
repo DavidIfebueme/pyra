@@ -1,6 +1,6 @@
 [package]
 name = "pyra-compiler"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["DavidIfebueme"]
 description = "A Pythonic Smart Contract Language for the EVM"

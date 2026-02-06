@@ -53,13 +53,23 @@ def transfer(to: address, amount: uint256):
 ```
 Source Code (.pyra)
   ↓
-Rust Lexer/Parser (logos + chumsky)
+Lexer (logos) → Token stream with Indent/Dedent
   ↓
-AST + Type Checking + Verification (single pass)
+Parser (chumsky) → AST
   ↓
-Direct EVM Bytecode Generation
+Type Checker → scoped symbol table + storage-aware globals
   ↓
-Optimized EVM Bytecode (.bin)
+Storage Layout → auto-discovered slot allocation
+  ↓
+IR Lowering → intermediate representation with 40+ opcodes
+  ↓
+Safety Hardening → checked add/sub/mul + reentrancy guards
+  ↓
+Bytecode Verification → jump safety + label validation
+  ↓
+Code Generation → EVM bytecode with ABI function dispatch
+  ↓
+Deploy Bytecode (.bin) + ABI JSON (.abi)
 ```
 
 ### Compiler notes
@@ -74,12 +84,15 @@ Optimized EVM Bytecode (.bin)
 
 | Stage | Tooling/Tech | Notes |
 |-------|--------------|-------|
-| Lexer/Parser | logos + chumsky (Rust) | Zero-copy parsing and fast performance |
-| AST + Type Checker | Custom Rust structs | Single-pass and memory efficient |
-| Formal Verification | Z3 SMT solver integration | Supports proofs of correctness |
-| Gas Estimator | Static analysis engine | Compile-time gas cost prediction |
-| Code Generator | Direct EVM bytecode (Rust) | No external compiler dependency |
-| CLI | clap (Rust) | `pyra build contracts/MyToken.pyra` |
+| Lexer/Parser | logos + chumsky (Rust) | Zero-copy parsing with indentation tracking |
+| AST + Type Checker | Custom Rust structs | Scoped symbol table with storage-aware globals |
+| Storage Layout | Auto-discovery engine | Sequential slot allocation from AST analysis |
+| IR Lowering | Custom IR with 40+ opcodes | AST → IR with selector computation |
+| Safety Hardening | Overflow/underflow/reentrancy | Automatic checked math and mutex guards |
+| Gas Estimator | Static analysis engine | Per-function gas cost prediction |
+| Code Generator | IR → EVM bytecode (Rust) | ABI dispatch + label resolution |
+| Bytecode Verifier | Jump/label validation | Orphan jump and duplicate label detection |
+| CLI | clap (Rust) | `pyra build contracts/MyToken.pyra --gas-report` |
 
 ## How it differs from Vyper
 
@@ -156,15 +169,15 @@ def withdraw(amount: uint256):
 
 ## v1 goals
 
-- [ ] Rust-based lexer and parser with logos and chumsky
-- [ ] Single-pass AST and type checker
-- [ ] Direct EVM bytecode generator
-- [ ] Compile-time gas estimation
+- [x] Rust-based lexer and parser with logos and chumsky
+- [x] Single-pass AST and type checker
+- [x] Direct EVM bytecode generator
+- [x] Compile-time gas estimation
 - [ ] Basic formal verification (Z3 integration)
-- [ ] Automatic reentrancy protection
+- [x] Automatic reentrancy protection
 - [ ] Generics with no runtime overhead
-- [ ] CLI tool (`pyra build ...`)
-- [ ] Example contracts (ERC20, vault, DEX)
+- [x] CLI tool (`pyra build ...`)
+- [x] Example contracts (ERC20, vault)
 
 ## Project structure
 
@@ -172,22 +185,27 @@ def withdraw(amount: uint256):
 pyra/
 ├── compiler/              # Rust compiler codebase
 │   ├── src/
-│   │   ├── lexer.rs       # logos-based lexer
-│   │   ├── parser.rs      # chumsky grammar
+│   │   ├── lexer.rs       # logos-based lexer with indentation tracking
+│   │   ├── parser.rs      # chumsky grammar (functions, structs, events, control flow)
 │   │   ├── ast.rs         # AST definitions
-│   │   ├── typer.rs       # Type checker and inference
-│   │   ├── verifier.rs    # Formal verification (Z3)
-│   │   ├── gas.rs         # Gas estimation engine
-│   │   ├── codegen.rs     # Direct EVM bytecode generation
-│   │   ├── security.rs    # Reentrancy and security analysis
-│   │   └── main.rs        # CLI entry point
-│   ├── Cargo.toml
-│   └── build.rs
+│   │   ├── typer.rs       # Static type checker with scoped symbol table
+│   │   ├── storage.rs     # Storage layout engine with auto-discovery
+│   │   ├── ir.rs          # Intermediate representation (AST → IR lowering)
+│   │   ├── codegen.rs     # IR → EVM bytecode with ABI dispatch
+│   │   ├── gas.rs         # Per-function gas estimation engine
+│   │   ├── security.rs    # Overflow/underflow checks + reentrancy guards
+│   │   ├── verifier.rs    # Bytecode verification (jump safety, label checks)
+│   │   ├── abi.rs         # ABI JSON generation (functions, constructors, events)
+│   │   ├── evm.rs         # Low-level EVM helpers
+│   │   ├── compiler.rs    # Compilation driver
+│   │   └── bin/pyra.rs    # CLI entry point
+│   ├── benches/           # Criterion benchmarks
+│   ├── tests/             # Integration tests
+│   └── Cargo.toml
 ├── contracts/             # Example .pyra contracts
-├── tests/                 # Foundry/Hardhat integration tests
 ├── stdlib/                # Standard library (Pyra code)
-├── README.md
-└── docs/
+├── docs/                  # Architecture and language reference
+└── README.md
 ```
 
 ## Roadmap
@@ -219,6 +237,9 @@ cargo install --locked pyra-compiler
 # Compile example contracts
 pyra build contracts/ERC20.pyra
 pyra build contracts/Vault.pyra
+
+# Compile with gas report
+pyra build contracts/ERC20.pyra --gas-report
 ```
 
 Fallback (GitHub):
