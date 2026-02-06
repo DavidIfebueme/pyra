@@ -115,3 +115,23 @@ fn pyra_build_vault_contract() {
     assert!(out_dir.path().join("Vault.abi").exists());
     assert!(out_dir.path().join("Vault.bin").exists());
 }
+
+#[test]
+fn pyra_build_gas_report() {
+    let mut file = NamedTempFile::new().unwrap();
+    write!(file, "def t() -> bool: return true").unwrap();
+    let path = file.path().to_path_buf();
+
+    let out_dir = TempDir::new().unwrap();
+
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("pyra"));
+    cmd.arg("build")
+        .arg(&path)
+        .arg("--out-dir")
+        .arg(out_dir.path())
+        .arg("--gas-report")
+        .assert()
+        .success()
+        .stdout(contains("Gas Report"))
+        .stdout(contains("gas"));
+}
