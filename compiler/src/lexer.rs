@@ -29,6 +29,12 @@ pub enum Token {
     Struct,
     #[token("require")]
     Require,
+    #[token("event")]
+    Event,
+    #[token("emit")]
+    Emit,
+    #[token("in")]
+    In,
     #[token("true")]
     True,
     #[token("false")]

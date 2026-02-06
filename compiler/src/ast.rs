@@ -17,6 +17,7 @@ pub enum Item {
     Function(Function),
     Struct(StructDef),
     Const(ConstDecl),
+    Event(EventDef),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -69,6 +70,7 @@ pub enum Statement {
     While(WhileStatement),
     Return(Option<Expression>),
     Require(Expression),
+    Emit(EmitStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -174,5 +176,19 @@ pub struct ForStatement {
 pub struct WhileStatement {
     pub condition: Expression,
     pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EventDef {
+    pub name: String,
+    pub fields: Vec<Parameter>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EmitStatement {
+    pub name: String,
+    pub args: Vec<Expression>,
     pub span: Span,
 }

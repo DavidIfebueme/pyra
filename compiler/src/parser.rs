@@ -69,6 +69,7 @@ fn program_parser() -> impl Parser<Token, Program, Error = ParseError> {
             choice((
                 function_parser().map(Item::Function),
                 struct_parser().map(Item::Struct),
+                event_parser().map(Item::Event),
                 const_item_parser().map(Item::Const),
             ))
             .then_ignore(nl()),
@@ -195,6 +196,19 @@ fn const_item_parser() -> impl Parser<Token, ConstDecl, Error = ParseError> {
             name,
             type_: type_.unwrap_or(Type::Uint256),
             value,
+            span: Span { start: 0, end: 0 },
+        })
+}
+
+fn event_parser() -> impl Parser<Token, EventDef, Error = ParseError> {
+    just(Token::Event)
+        .ignore_then(identifier())
+        .then_ignore(just(Token::LParen))
+        .then(parameter_list())
+        .then_ignore(just(Token::RParen))
+        .map(|(name, fields)| EventDef {
+            name,
+            fields,
             span: Span { start: 0, end: 0 },
         })
 }
@@ -394,6 +408,21 @@ fn assignment_target_parser() -> impl Parser<Token, Expression, Error = ParseErr
     base.then(ops).foldl(fold_target as fn(Expression, TargetOp) -> Expression)
 }
 
+fn emit_statement() -> impl Parser<Token, Statement, Error = ParseError> {
+    just(Token::Emit)
+        .ignore_then(identifier())
+        .then_ignore(just(Token::LParen))
+        .then(expression_parser().separated_by(just(Token::Comma)).allow_trailing())
+        .then_ignore(just(Token::RParen))
+        .map(|(name, args)| {
+            Statement::Emit(EmitStatement {
+                name,
+                args,
+                span: Span { start: 0, end: 0 },
+            })
+        })
+}
+
 fn statement_parser() -> BoxedParser<'static, Token, Statement, ParseError> {
     recursive(|stmt| {
         let suite = suite_parser(stmt.clone().boxed());
@@ -414,7 +443,7 @@ fn statement_parser() -> BoxedParser<'static, Token, Statement, ParseError> {
             )
             .then(
                 nl1()
-                    .ignore_then(just(Token::Else).ignore_then(just(Token::Colon)).ignore_then(suite))
+                    .ignore_then(just(Token::Else).ignore_then(just(Token::Colon)).ignore_then(suite.clone()))
                     .or_not(),
             )
             .map(|(((cond, then_branch), elifs), else_branch)| {
@@ -441,8 +470,38 @@ fn statement_parser() -> BoxedParser<'static, Token, Statement, ParseError> {
                 })
             });
 
+        let for_stmt = just(Token::For)
+            .ignore_then(identifier())
+            .then_ignore(just(Token::In))
+            .then(expression_parser())
+            .then_ignore(just(Token::Colon))
+            .then(suite.clone())
+            .map(|((var, iterable), body)| {
+                Statement::For(ForStatement {
+                    var,
+                    iterable,
+                    body,
+                    span: Span { start: 0, end: 0 },
+                })
+            });
+
+        let while_stmt = just(Token::While)
+            .ignore_then(expression_parser())
+            .then_ignore(just(Token::Colon))
+            .then(suite)
+            .map(|(condition, body)| {
+                Statement::While(WhileStatement {
+                    condition,
+                    body,
+                    span: Span { start: 0, end: 0 },
+                })
+            });
+
         choice((
             if_stmt,
+            for_stmt,
+            while_stmt,
+            emit_statement(),
             require_statement(),
             let_statement(),
             return_statement(),
@@ -541,5 +600,40 @@ mod tests {
         let program = parse_from_source(source).unwrap();
         assert_eq!(program.items.len(), 2);
         assert!(matches!(program.items[0], Item::Const(_)));
+    }
+
+    #[test]
+    fn parses_for_loop() {
+        let source = "def t():\n    for i in items:\n        let x = i\n";
+        let program = parse_from_source(source).unwrap();
+        let Item::Function(f) = &program.items[0] else { panic!() };
+        assert_eq!(f.body.statements.len(), 1);
+        assert!(matches!(f.body.statements[0], Statement::For(_)));
+    }
+
+    #[test]
+    fn parses_while_loop() {
+        let source = "def t():\n    while true:\n        let x = 1\n";
+        let program = parse_from_source(source).unwrap();
+        let Item::Function(f) = &program.items[0] else { panic!() };
+        assert_eq!(f.body.statements.len(), 1);
+        assert!(matches!(f.body.statements[0], Statement::While(_)));
+    }
+
+    #[test]
+    fn parses_event_declaration() {
+        let source = "event Transfer(from: address, to: address, amount: uint256)\n\ndef t() -> bool: return true\n";
+        let program = parse_from_source(source).unwrap();
+        assert_eq!(program.items.len(), 2);
+        assert!(matches!(program.items[0], Item::Event(_)));
+    }
+
+    #[test]
+    fn parses_emit_statement() {
+        let source = "def t():\n    emit Transfer(a, b, c)\n";
+        let program = parse_from_source(source).unwrap();
+        let Item::Function(f) = &program.items[0] else { panic!() };
+        assert_eq!(f.body.statements.len(), 1);
+        assert!(matches!(f.body.statements[0], Statement::Emit(_)));
     }
 }
