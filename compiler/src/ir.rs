@@ -305,12 +305,11 @@ fn lower_emit(ctx: &mut LowerCtx, em: &crate::EmitStatement, ops: &mut Vec<IrOp>
         ops.push(IrOp::MStore);
     }
     let data_size = em.args.len() * 32;
-    ops.push(IrOp::Push(u64_to_bytes(data_size as u64)));
-    ops.push(IrOp::Push(u64_to_bytes(mem_start as u64)));
-
     let sig = build_event_signature(&em.name, ctx.events.get(&em.name));
     let topic = keccak256_bytes(sig.as_bytes());
     ops.push(IrOp::Push(topic.to_vec()));
+    ops.push(IrOp::Push(u64_to_bytes(data_size as u64)));
+    ops.push(IrOp::Push(u64_to_bytes(mem_start as u64)));
     ops.push(IrOp::Log(1));
 }
 

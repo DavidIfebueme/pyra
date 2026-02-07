@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use pyra_compiler::{compile_file_to_abi_and_bin, compile_file, GasReport};
 use pyra_compiler::ir::lower_program;
+use pyra_compiler::{harden, add_reentrancy_guard, StorageLayout};
 
 #[derive(Parser)]
 #[command(name = "pyra", version, about = "Pyra compiler")]
@@ -31,7 +32,10 @@ fn main() {
                 Ok(_) => {
                     if gas_report {
                         if let Ok(program) = compile_file(&input) {
-                            let module = lower_program(&program);
+                            let mut module = lower_program(&program);
+                            harden(&mut module);
+                            let layout = StorageLayout::from_program(&program);
+                            add_reentrancy_guard(&mut module, layout.slot_count());
                             let report = GasReport::from_module(&module);
                             println!("Gas Report");
                             println!("{}", "=".repeat(50));
